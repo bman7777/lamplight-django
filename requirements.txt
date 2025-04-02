@@ -6,19 +6,70 @@
 #
 asgiref==3.8.1
     # via django
+async-timeout==5.0.1
+    # via redis
+attrs==25.3.0
+    # via glom
+black==25.1.0
+    # via -r requirements.in
+boltons==25.0.0
+    # via
+    #   face
+    #   glom
+click==8.1.8
+    # via black
 django==3.2.25
+    # via
+    #   -r requirements.in
+    #   django-redis
+django-redis==5.4.0
+    # via -r requirements.in
+exceptiongroup==1.2.2
+    # via pytest
+face==24.0.0
+    # via glom
+glom==24.11.0
     # via -r requirements.in
 gunicorn==23.0.0
     # via -r requirements.in
+iniconfig==2.1.0
+    # via pytest
+isort==6.0.1
+    # via -r requirements.in
+mypy-extensions==1.0.0
+    # via black
 mysqlclient==2.2.7
     # via -r requirements.in
 packaging==24.2
-    # via gunicorn
+    # via
+    #   black
+    #   gunicorn
+    #   pytest
+pathspec==0.12.1
+    # via black
+platformdirs==4.3.7
+    # via black
+pluggy==1.5.0
+    # via pytest
+pytest==8.3.5
+    # via pytest-django
+pytest-django==4.11.0
+    # via -r requirements.in
 python-dotenv==1.0.1
     # via -r requirements.in
 pytz==2025.1
     # via django
+redis==5.2.1
+    # via
+    #   -r requirements.in
+    #   django-redis
 sqlparse==0.5.3
     # via django
+tomli==2.2.1
+    # via
+    #   black
+    #   pytest
 typing-extensions==4.12.2
-    # via asgiref
+    # via
+    #   asgiref
+    #   black

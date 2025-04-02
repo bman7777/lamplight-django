@@ -14,22 +14,11 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+
 from django.contrib import admin
-from django.urls import path, include
-from django.views.decorators.csrf import csrf_exempt
-
-@csrf_exempt
-def test_view(request):
-    return HttpResponse("Test successful", content_type="text/plain")
-
+from django.urls import include, path
 
 urlpatterns = [
-    path('ll/admin/', admin.site.urls),
-    path('ll/', include("bible.urls")),
-    path('ll/test/', test_view)
+    path("ll/admin/", admin.site.urls),
+    path("ll/", include("bible.urls")),
 ]
-
-
-# 
-# 
-# curl --unix-socket /home/lamplight-django/lamplight/lamplight.sock http://localhost/ll/test/
