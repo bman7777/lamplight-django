@@ -1,4 +1,10 @@
+black
 django<4.0
+django-redis
+glom
 gunicorn
+isort
 mysqlclient
+pytest-django
 python-dotenv
+redis
