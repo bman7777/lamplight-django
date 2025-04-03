@@ -9,23 +9,20 @@ from django.urls import reverse
 @pytest.mark.parametrize(
     "text_input",
     [
-        ("Romans 8:28", "Romans", 8, 28),
-        ("Romans 8", "Romans", 8),
-        ("Rom",),
-        ("Romans",),
+        ("Luke 1:28", "Luke", 1, 28),
+        ("Luke 1", "Luke", 1),
         ("1 John 3:16", "1 John", 3, 16),
         ("song of songs 1:22", "Song Of Songs", 1, 22),
         ("1JOhn 3:16", "1 John", 3, 16),
-        ("love",),
-        ("for God so loved",),
+        ("inasmuch", "Luke", 1, 1),
+        ("priestly", "Luke", 1, 23),
+        ("Do not be afraid, Zacharias", "Luke", 1, 13),
     ],
 )
 def test_standard_query_strings(text_input, client):
     """Test good input search strings."""
 
-    # search with the given text input
-    query_params = {"q": text_input[0]}
-    response = client.post(f'{reverse("search")}?{urlencode(query_params)}')
+    response = client.post(f'{reverse("search")}?{urlencode({"q": text_input[0]})}')
     assert response.status_code == 201
 
     out = response.json()

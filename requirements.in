@@ -5,6 +5,9 @@ glom
 gunicorn
 isort
 mysqlclient
+pylint
 pytest-django
 python-dotenv
+pysolr
 redis
+requests
