@@ -13,10 +13,10 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 import os
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-
-from dotenv import load_dotenv
 
 load_dotenv()
 
@@ -40,8 +40,6 @@ SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 # Other useful settings
 USE_X_FORWARDED_HOST = True
 USE_X_FORWARDED_PORT = True
-
-# Application definition
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -105,10 +103,11 @@ DATABASES = {
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": "redis://127.0.0.1:6379/1",  # Use your Redis server URL
+        "LOCATION": "redis://localhost:6379/0",
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
             "PASSWORD": os.getenv("REDIS_PASS"),
+            "CONNECTION_POOL_KWARGS": {"decode_responses": True},
         },
     }
 }
@@ -158,11 +157,40 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 LOGGING = {
     "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "simple": {
+            "format": "{levelname} {message}",
+            "style": "{",
+        },
+    },
     "handlers": {
-        "file": {
+        "console": {
             "level": "DEBUG",
-            "class": "logging.FileHandler",
-            "filename": "django_debug.log",
+            "class": "logging.StreamHandler",
+            "formatter": "simple",
+        },
+    },
+    "loggers": {
+        "django": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": True,
+        },
+        "django.request": {
+            "handlers": ["console"],
+            "level": "DEBUG",
+            "propagate": False,
+        },
+        "django.db.backends": {
+            "handlers": ["console"],
+            "level": "DEBUG",
+            "propagate": False,
+        },
+        "bible": {
+            "handlers": ["console"],
+            "level": "DEBUG",
+            "propagate": True,
         },
     },
 }
