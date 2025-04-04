@@ -35,11 +35,7 @@ def csv_to_redis_hash(csv_file, hash_prefix="nasb95"):
         print(f"Failed to connect to Redis: {e}")
         return
 
-    r.flushall()
-    r.hset(hash_prefix, mapping={"name": hash_prefix, "data": "NASB 95 Translation"})
-
-    r.hset(f"{hash_prefix}:luk", mapping={"name": "luk", "data": "Book of Luke"})
-
+    r.hset(f"{hash_prefix}:luk", mapping={"name": "luk", "data": "Luke"})
     r.hset(f"{hash_prefix}:luk:1", mapping={"name": "luk 1", "data": "Luke Chapter 1"})
 
     # Set up a custom dialect that preserves escaped characters (otherwise we will lose all commas)
