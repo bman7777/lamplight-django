@@ -53,20 +53,14 @@ def search(request):
                             book = best_key
 
             chapter = verse_matches[2] if verse_matches[2] else "1"
-            if int(chapter) < 1:
-                return HttpResponse(status=404)
-            if int(chapter) > 40:  # todo: check against max chapters
-                return HttpResponse(status=404)
 
             # todo: return a list of verses if asking for the whole chapter
             verse = verse_matches[3] if verse_matches[3] else "1"
-            if int(verse) < 1:
-                return HttpResponse(status=404)
-            if int(verse) > 100:  # todo: check against max verses in this chapter
-                return HttpResponse(status=404)
 
             text = redis_conn.hget(f"nasb95:{book}:{chapter}:{verse}", "data")
             if not text:
+                if book == "luk":  # todo: raise error for all books
+                    return HttpResponse(status=404)
                 text = "todo"
 
             return JsonResponse(

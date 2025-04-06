@@ -9,7 +9,7 @@ import sys
 def remove_markup_tags(text):
     # This pattern matches any tag structure like <...>
     clean_text = re.sub(r"<[^>]+>", "", text)
-    clean_text = re.sub(r"\[[^\]]*\]", "", clean_text)
+    clean_text = re.sub(r"\[([^\]]*)\]", r"\1", clean_text)
     return clean_text
 
 
@@ -32,10 +32,11 @@ def csv_to_json(csv_file_path, json_file_path=None, encoding="utf-8"):
 
             output = []
             for col in csv_reader:
+                text = "" if len(col) <= 3 else col[3]
                 output.append(
                     {
                         "id": f"nasb95:{col[0]}:{col[1]}:{col[2]}",
-                        "_text_": remove_markup_tags(col[3]),
+                        "_text_": remove_markup_tags(text),
                     }
                 )
 
