@@ -35,13 +35,79 @@ def csv_to_redis_hash(csv_file, hash_prefix="nasb95"):
         print(f"Failed to connect to Redis: {e}")
         return
 
-    r.hset(f"{hash_prefix}:luk", mapping={"name": "luk", "data": "Luke"})
-    r.hset(f"{hash_prefix}:luk:1", mapping={"name": "luk 1", "data": "Luke Chapter 1"})
-
     # Set up a custom dialect that preserves escaped characters (otherwise we will lose all commas)
     csv.register_dialect(
         "escaped", escapechar="\\", doublequote=False, quoting=csv.QUOTE_MINIMAL
     )
+
+    book_map = [
+        {"genesis": "gen"},
+        {"exodus": "exo"},
+        {"leviticus": "lev"},
+        {"numbers": "num"},
+        {"deuteronomy": "deu"},
+        {"joshua": "jos"},
+        {"judges": "jdg"},
+        {"ruth": "rth"},
+        {"1 samuel": "1sa"},
+        {"2 samuel": "2sa"},
+        {"1 kings": "1ki"},
+        {"2 kings": "2ki"},
+        {"1 chronicles": "1ch"},
+        {"2 chronicles": "2ch"},
+        {"ezra": "ezr"},
+        {"nehemiah": "neh"},
+        {"esther": "est"},
+        {"job": "job"},
+        {"psalms": "psa"},
+        {"proverbs": "pro"},
+        {"ecclesiastes": "ecc"},
+        {"song of songs": "sng"},
+        {"isaiah": "isa"},
+        {"jeremiah": "jer"},
+        {"lamentations": "lam"},
+        {"ezekiel": "eze"},
+        {"daniel": "dan"},
+        {"hosea": "hos"},
+        {"joel": "joe"},
+        {"amos": "amo"},
+        {"obadiah": "oba"},
+        {"jonah": "jon"},
+        {"micah": "mic"},
+        {"nahum": "nah"},
+        {"habakkuk": "hab"},
+        {"zephaniah": "zep"},
+        {"haggai": "hag"},
+        {"zechariah": "zec"},
+        {"malachi": "mal"},
+        {"matthew": "mat"},
+        {"mark": "mar"},
+        {"luke": "luk"},
+        {"john": "jhn"},
+        {"acts": "act"},
+        {"romans": "rom"},
+        {"1 corinthians": "1co"},
+        {"2 corinthians": "2co"},
+        {"galatians": "gal"},
+        {"ephesians": "eph"},
+        {"philippians": "phl"},
+        {"colossians": "col"},
+        {"1 thessalonians": "1th"},
+        {"2 thessalonians": "2th"},
+        {"1 timothy": "1ti"},
+        {"2 timothy": "2ti"},
+        {"titus": "tit"},
+        {"philemon": "phm"},
+        {"hebrews": "heb"},
+        {"james": "jas"},
+        {"1 peter": "1pe"},
+        {"2 peter": "2pe"},
+        {"1 john": "1jo"},
+        {"2 john": "2jo"},
+        {"3 john": "3jo"},
+        {"jude": "jde"},
+        {"revelation": "rev"},
+    ]
 
     # Open and process the CSV file
     with open(csv_file, "r", newline="", encoding="utf-8") as file:
@@ -54,10 +120,31 @@ def csv_to_redis_hash(csv_file, hash_prefix="nasb95"):
                 continue
 
             try:
-                # Insert the hash into Redis
+                text = "" if len(row) <= 3 else row[3]
+                display_name = ""
+
+                if row[1] == row[2] == "1":    
+                    for book in book_map:
+                        if list(book.values())[0] == row[0]:
+                            display_name = list(book.keys())[0]
+                            r.hset(
+                                f"{hash_prefix}:{row[0]}",
+                                mapping={"name": {row[0]}, "data": display_name},
+                            )
+                            break
+
+                if row[2] == "1":
+                    r.hset(
+                        f"{hash_prefix}:{row[0]}:{row[1]}",
+                        mapping={
+                            "name": f"{row[0]} {row[1]}",
+                            "data": f"{display_name} chapter {row[1]}",
+                        },
+                    )
+
                 r.hset(
                     f"{hash_prefix}:{row[0]}:{row[1]}:{row[2]}",
-                    mapping={"name": f"{row[0]} {row[1]}:{row[2]}", "data": row[3]},
+                    mapping={"name": f"{row[0]} {row[1]}:{row[2]}", "data": text},
                 )
                 row_count += 1
 
