@@ -17,7 +17,7 @@ chapter-consume:
 	@echo "Consuming a chapter..."
 	python lamplight/scripts/bible_to_redis.py lamplight/scripts/bible.csv
 	python lamplight/scripts/biblecsv_to_solrdoc.py lamplight/scripts/bible.csv -o lamplight/scripts/bible.json
-	python lamplight/scripts/doc_to_solr.py lamplight/scripts/bible.json -c verses
+	python lamplight/scripts/doc_to_solr.py lamplight/scripts/bible.json
 
 .PHONY: version-consume
 version-consume:

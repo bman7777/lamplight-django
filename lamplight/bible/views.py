@@ -34,7 +34,7 @@ def search(request):
             if not redis_conn.exists(f"nasb95:{book}:1"):
                 book = (verse_matches[0] + " " + verse_matches[1]).strip().lower()
                 short_code = redis_conn.hget(f"nasb95:books:{book}", "code")
-                if short_code and short_code == "luk":
+                if short_code:
                     book = short_code
                 else:
                     best_key = None
@@ -49,8 +49,6 @@ def search(request):
 
                     if best_key:
                         book = redis_conn.hget(f"nasb95:books:{best_key}", "code")
-                        if book != "luk":
-                            book = best_key
 
             chapter = verse_matches[2] if verse_matches[2] else "1"
 
@@ -59,20 +57,15 @@ def search(request):
 
             text = redis_conn.hget(f"nasb95:{book}:{chapter}:{verse}", "data")
             if not text:
-                if book == "luk":  # todo: raise error for all books
-                    return HttpResponse(status=404)
-                text = "todo"
+                return HttpResponse(status=404)
 
+            book_name = redis_conn.hget(f"nasb95:{book}", "data") or ""
             return JsonResponse(
                 {
                     "data": [
                         {
-                            "book": (
-                                redis_conn.hget(f"nasb95:{book}", "data")
-                                if book == "luk"
-                                else " ".join(
-                                    word.capitalize() for word in book.split(" ")
-                                )
+                            "book": " ".join(
+                                word.capitalize() for word in book_name.split(" ")
                             ),
                             "chapter": int(chapter),
                             "verse": int(verse),
@@ -101,9 +94,10 @@ def search(request):
     out = []
     for result in results:
         parts = result["id"].split(":")
+        book_name = redis_conn.hget(f"nasb95:{parts[1]}", "data")
         out.append(
             {
-                "book": redis_conn.hget(f"nasb95:{parts[1]}", "data"),
+                "book": " ".join(word.capitalize() for word in book_name.split(" ")),
                 "chapter": int(parts[2]),
                 "verse": int(parts[3]),
                 "text": redis_conn.hget(result["id"], "data"),

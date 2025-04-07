@@ -103,6 +103,7 @@ def csv_to_redis_hash(hash_prefix="nasb95"):
     ]
     count = 0
     for book in book_map:
+        print(f"adding {hash_prefix}:books:{list(book.keys())[0]}")
         r.hset(
             f"{hash_prefix}:books:{list(book.keys())[0]}",
             mapping={"code": list(book.values())[0]},
