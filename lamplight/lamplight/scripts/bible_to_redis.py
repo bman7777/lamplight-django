@@ -123,13 +123,14 @@ def csv_to_redis_hash(csv_file, hash_prefix="nasb95"):
                 text = "" if len(row) <= 3 else row[3]
                 display_name = ""
 
-                if row[1] == row[2] == "1":    
+                if row[1] == row[2] == "1":
                     for book in book_map:
                         if list(book.values())[0] == row[0]:
                             display_name = list(book.keys())[0]
+                            print(f"adding key for: {hash_prefix}:{row[0]}")
                             r.hset(
                                 f"{hash_prefix}:{row[0]}",
-                                mapping={"name": {row[0]}, "data": display_name},
+                                mapping={"name": row[0], "data": display_name},
                             )
                             break
 
