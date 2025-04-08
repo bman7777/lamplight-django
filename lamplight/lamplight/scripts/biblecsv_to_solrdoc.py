@@ -1,3 +1,5 @@
+"""Transform a CSV file of bible verses into a json that can be imported into solr."""
+
 #!/usr/bin/env python3
 import argparse
 import csv
@@ -7,6 +9,7 @@ import sys
 
 
 def remove_markup_tags(text):
+    """Clean up the concord and bracket markup so the string looks more human-reabable."""
     # This pattern matches any tag structure like <...>
     clean_text = re.sub(r"<[^>]+>", "", text)
     clean_text = re.sub(r"\[([^\]]*)\]", r"\1", clean_text)
@@ -51,12 +54,13 @@ def csv_to_json(csv_file_path, json_file_path=None, encoding="utf-8"):
                 print(json.dumps(output, indent=4))
 
             return True
-    except Exception as e:
+    except Exception as e:  # pragma pylint: disable=broad-exception-caught
         print(f"Error converting CSV to JSON: {str(e)}", file=sys.stderr)
         return False
 
 
 def main():
+    """Parse args and kick off export process."""
     # Set up argument parser
     parser = argparse.ArgumentParser(description="Convert CSV file to JSON")
     parser.add_argument("csv_file", help="Path to the input CSV file")

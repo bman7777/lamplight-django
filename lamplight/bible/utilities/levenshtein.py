@@ -1,3 +1,6 @@
+"""Compare two strings and determine their similarity based on the Levenshtein alogithm."""
+
+
 def distance(str1, str2):
     """
     Calculate the Levenshtein distance between two strings.

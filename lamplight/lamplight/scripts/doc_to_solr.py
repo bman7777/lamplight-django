@@ -14,6 +14,8 @@ import pysolr
 from dotenv import load_dotenv
 from tqdm import tqdm
 
+# pragma pylint: disable=broad-exception-caught
+
 
 def batch_upload_to_solr(
     json_file_path,
@@ -65,7 +67,7 @@ def batch_upload_to_solr(
     # Load documents from JSON file
     try:
         print(f"Loading documents from {json_file_path}...")
-        with open(json_file_path, "r") as f:
+        with open(json_file_path, "r", encoding="utf-8") as f:
             all_docs = json.load(f)
 
         total_docs = len(all_docs)
