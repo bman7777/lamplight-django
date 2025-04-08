@@ -1,3 +1,5 @@
+"""Utility for quickly printing keys in redis to check their validity"""
+
 #!/usr/bin/env python3
 
 import os
@@ -59,7 +61,7 @@ def print_redis_hash(host="localhost", port=6379, db=0, password=None, hash_key=
     except redis.ConnectionError:
         print(f"Error: Could not connect to Redis at {host}:{port}")
         sys.exit(1)
-    except Exception as e:
+    except Exception as e:  # pragma pylint: disable=broad-exception-caught
         print(f"Error: {e}")
         sys.exit(1)
 
@@ -67,18 +69,9 @@ def print_redis_hash(host="localhost", port=6379, db=0, password=None, hash_key=
 if __name__ == "__main__":
     load_dotenv()
 
-    # Default values
-    host = "localhost"
-    port = 6379
-    db = 0
-    password = os.getenv("REDIS_PASS")
-    hash_key = None
-
     # Parse command line arguments
     args = sys.argv[1:]
     print(f"Debug: Command line arguments received: {args}")
 
     if len(args) >= 1:
-        hash_key = args[0]
-
-    print_redis_hash(host, port, db, password, hash_key)
+        print_redis_hash("localhost", 6379, 0, os.getenv("REDIS_PASS"), args[0])

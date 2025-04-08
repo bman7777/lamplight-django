@@ -1,8 +1,8 @@
-import json
+"""Test the various high level search functionality and define its edge cases."""
+
 from urllib.parse import urlencode
 
 import pytest
-from django.test import Client, TestCase
 from django.urls import reverse
 
 
@@ -15,12 +15,16 @@ from django.urls import reverse
         ("Luk1", "Luke", 1),
         ("luk1", "Luke", 1),
         ("luk      1", "Luke", 1),
+        ("Matt 8:28", "Matthew", 8, 28),
+        ("Rev 12:18", "Revelation", 12, 18),
         ("1 John 3:16", "1 John", 3, 16),
         ("song of songs 1:15", "Song Of Songs", 1, 15),
         ("1JOhn 3:16", "1 John", 3, 16),
         ("inasmuch", "Hebrews", 7, 20),
         ("priestly", "Luke", 1, 23),
         ("Do not be afraid, Zacharias", "Luke", 1, 13),
+        ("for God so loved the world", "John", 3, 16),
+        ("Jesus wept", "John", 11, 35),
     ],
 )
 def test_standard_query_strings(text_input, client):
@@ -36,7 +40,7 @@ def test_standard_query_strings(text_input, client):
         assert out["data"][0]["chapter"] == text_input[2]
     if len(text_input) > 3:
         assert out["data"][0]["verse"] == text_input[3]
-    assert out["data"][0]["text"]
+    assert out["data"][0]["text"] is not None
 
 
 @pytest.mark.parametrize(

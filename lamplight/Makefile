@@ -19,17 +19,12 @@ chapter-consume:
 	python lamplight/scripts/biblecsv_to_solrdoc.py lamplight/scripts/bible.csv -o lamplight/scripts/bible.json
 	python lamplight/scripts/doc_to_solr.py lamplight/scripts/bible.json
 
-.PHONY: version-consume
-version-consume:
-	@echo "Consuming a version..."
-	python lamplight/scripts/version_to_redis.py
-
 .PHONY: lint
 lint:
 	@echo "Linting..."
 	black .
 	isort .
-	pylint ../**/*/*.py
+	find . -name '*.py' -exec pylint {} +
 
 
 .PHONY: py-deps
