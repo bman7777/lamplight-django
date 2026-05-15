@@ -1,5 +1,5 @@
 black
-django<4.0
+django>=5.2,<6.0
 django-redis
 glom
 granian
@@ -8,7 +8,6 @@ mysqlclient
 pylint
 pytest-django
 python-dotenv
-pysolr
 redis
 requests
 uvloop

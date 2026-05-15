@@ -3,7 +3,6 @@
 import logging
 import os
 
-import pysolr
 from django.http import HttpResponse, JsonResponse
 from django_redis import get_redis_connection
 
@@ -22,6 +21,7 @@ def search(request):
         results = bible_locator.lookup(query)
 
     if not results:
+        raise Exception("boom")
         solr = pysolr.Solr(
             "http://localhost:8983/solr/verses/",
             timeout=10,

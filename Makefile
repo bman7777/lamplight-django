@@ -30,8 +30,8 @@ lint:
 .PHONY: py-deps
 py-deps:
 	@echo "Updating dependencies..."
-	pip-compile ../requirements.in
-	pip install -r ../requirements.txt
+	pip-compile requirements.in
+	pip install -r requirements.txt
 
 
 .PHONY: status-check

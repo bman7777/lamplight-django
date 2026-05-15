@@ -48,7 +48,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "bible",
+    "apps.bible",
 ]
 
 MIDDLEWARE = [
@@ -188,7 +188,7 @@ LOGGING = {
             "level": "DEBUG",
             "propagate": False,
         },
-        "bible": {
+        "apps.bible": {
             "handlers": ["console"],
             "level": "DEBUG",
             "propagate": True,

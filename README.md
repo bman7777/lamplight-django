@@ -2,6 +2,11 @@
 os-level dependencies
 `apk add python3 py3-pip py3-virtualenv git build-base python3-dev rust cargo libffi-dev certbot certbot-nginx nginx mariadb-connector-c-dev pkgconfig`
 
+# virtual env
+python3 -m venv .venv
+. .venv/bin/activate
+pip install pip-tools
+
 ## Nginx Config(s)
 - etc/nginx/http.d/default.conf
 
@@ -45,5 +50,3 @@ tail -f /var/log/granian/granian.err
 ## Deploying python change(s)
 Granian provides a socket that launches the application's asgi.  Therefore, we need to reload the project:
 `rc-service granian restart`
-
-## Solr
