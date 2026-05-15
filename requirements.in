@@ -2,7 +2,7 @@ black
 django<4.0
 django-redis
 glom
-gunicorn
+granian
 isort
 mysqlclient
 pylint
@@ -11,3 +11,4 @@ python-dotenv
 pysolr
 redis
 requests
+uvloop
