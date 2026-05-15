@@ -33,7 +33,7 @@ DEBUG = False
 if DEBUG:
     ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
 else:
-    ALLOWED_HOSTS = ["kingdomwith.in", "31.220.58.88"]
+    ALLOWED_HOSTS = ["kingdomwith.in", "72.62.82.68"]
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
@@ -79,6 +79,7 @@ TEMPLATES = [
     },
 ]
 
+ASGI_APPLICATION = "lamplight.asgi.application"
 WSGI_APPLICATION = "lamplight.wsgi.application"
 
 
