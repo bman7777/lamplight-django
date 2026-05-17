@@ -1,8 +1,8 @@
 # lamplight-django
 os-level dependencies
-`apk add python3 py3-pip py3-virtualenv git build-base python3-dev rust cargo libffi-dev certbot certbot-nginx nginx mariadb-connector-c-dev pkgconfig`
+`apk add python3 py3-pip py3-virtualenv git build-base python3-dev rust cargo libffi-dev certbot certbot-nginx nginx mariadb-connector-c-dev pkgconfig redis`
 
-# virtual env
+## virtual env
 python3 -m venv .venv
 . .venv/bin/activate
 pip install pip-tools
@@ -34,7 +34,6 @@ server {
 }
 ```
 
-
 ## Granian
 /etc/init.d/granian
 chmod +x /etc/init.d/granian
@@ -44,7 +43,7 @@ chmod +x /etc/init.d/granian
 rc-update add granian default
 rc-service granian start
 
-# view error logs
+## view error logs
 tail -f /var/log/granian/granian.err
 
 ## Deploying python change(s)
