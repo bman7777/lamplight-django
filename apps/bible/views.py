@@ -1,12 +1,11 @@
 """Implementations of various Bible handlers."""
 
 import logging
-import os
 
 from django.http import HttpResponse, JsonResponse
 from django_redis import get_redis_connection
 
-from .utilities import bible_locator
+from .utilities import bible_locator, haystack_search
 
 logger = logging.getLogger(__name__)
 
@@ -19,27 +18,8 @@ def search(request):
     results = []
     if query:
         results = bible_locator.lookup(query)
-
-    if not results:
-        raise Exception("boom")
-        solr = pysolr.Solr(
-            "http://localhost:8983/solr/verses/",
-            timeout=10,
-            auth=(os.getenv("SOLR_USER"), os.getenv("SOLR_PASS")),
-        )
-        output = solr.search(
-            query,
-            **{
-                "pf": "_text_^10",  # boost exact phrase matches higher
-                "fl": "id,_text_",  # Fields to return
-                "sort": "score desc",  # Optional sorting
-                "defType": "edismax",  # query parser to use
-                "ps": 10,  # phrase slop: only exact phrases get the boost
-            },
-        )
-        results = []
-        for out in output:
-            results.append(tuple(out["id"].split(":")))
+        if not results:
+            results = haystack_search.fulltext_lookup(query)
 
     if not results:
         return HttpResponse(status=204)

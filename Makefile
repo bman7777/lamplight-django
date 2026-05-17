@@ -8,23 +8,22 @@ all: help
 .PHONY: help
 help:
 	@echo "Available commands:"
-	@echo "  make chapter-consume - Process chapter data"
+	@echo "  make seed-data       - Seed Redis + haystack index from bible data"
 	@echo "  make lint            - Lint everything"
 	@echo "  make py-deps         - Update python dependencies"
 
-.PHONY: chapter-consume
-chapter-consume:
-	@echo "Consuming a chapter..."
-	python lamplight/scripts/bible_to_redis.py lamplight/scripts/bible.csv
-	python lamplight/scripts/biblecsv_to_solrdoc.py lamplight/scripts/bible.csv -o lamplight/scripts/bible.json
-	python lamplight/scripts/doc_to_solr.py lamplight/scripts/bible.json
+.PHONY: seed-data
+seed-data:
+	@echo "Seeding bible data..."
+	python manage.py bible_to_redis apps/bible/data/bible.csv
+	python manage.py bible_to_haystack
 
 .PHONY: lint
 lint:
 	@echo "Linting..."
 	black .
 	isort .
-	find . -name '*.py' -exec pylint {} +
+	find . -path ./.venv -prune -o -name '*.py' -exec pylint {} +
 
 
 .PHONY: py-deps
@@ -40,6 +39,4 @@ status-check:
 	sudo systemctl status grafana-server | head -n 4
 	sudo systemctl status nginx | head -n 4
 	sudo systemctl status gunicorn | head -n 4
-	sudo systemctl status solr.service | head -n 4
-	sudo systemctl status zookeeper.service | head -n 4
 	sudo systemctl status redis | head -n 4

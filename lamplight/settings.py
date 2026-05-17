@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "haystack",
     "apps.bible",
 ]
 
@@ -112,6 +113,14 @@ CACHES = {
         },
     }
 }
+
+HAYSTACK_CONNECTIONS = {
+    "default": {
+        "ENGINE": "haystack.backends.whoosh_backend.WhooshEngine",
+        "PATH": str(BASE_DIR / "var" / "whoosh"),
+    },
+}
+HAYSTACK_SIGNAL_PROCESSOR = "haystack.signals.BaseSignalProcessor"
 
 
 # Password validation

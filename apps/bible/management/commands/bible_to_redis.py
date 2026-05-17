@@ -2,13 +2,11 @@
 
 import csv
 import json
-
 from pathlib import Path
 
 from django.apps import apps
 from django.core.management.base import BaseCommand, CommandError
 from django_redis import get_redis_connection
-
 
 DATA_DIR = Path(apps.get_app_config("bible").path) / "data"
 BOOK_MAP_PATH = DATA_DIR / "book_map.json"
@@ -38,9 +36,7 @@ class Command(BaseCommand):
         self._import_verses(redis_conn, book_map, csv_file, prefix)
 
     def _import_version_info(self, redis_conn, book_map, prefix):
-        redis_conn.hset(
-            prefix, mapping={"name": prefix, "data": "NASB 95 Translation"}
-        )
+        redis_conn.hset(prefix, mapping={"name": prefix, "data": "NASB 95 Translation"})
 
         count = 0
         for book in book_map:
@@ -50,7 +46,9 @@ class Command(BaseCommand):
             redis_conn.hset(f"{prefix}:books:{name}", mapping={"code": code})
             count += 1
 
-        self.stdout.write(self.style.SUCCESS(f"Version info import complete. Processed {count} rows."))
+        self.stdout.write(
+            self.style.SUCCESS(f"Version info import complete. Processed {count} rows.")
+        )
 
     def _import_verses(self, redis_conn, book_map, csv_file, prefix):
         try:
@@ -104,7 +102,13 @@ class Command(BaseCommand):
                         self.stdout.write(f"Processed {row_count} rows...")
 
                 except Exception as e:  # pylint: disable=broad-exception-caught
-                    self.stderr.write(self.style.ERROR(f"Error processing row {row_count + 1}: {e}"))
+                    self.stderr.write(
+                        self.style.ERROR(f"Error processing row {row_count + 1}: {e}")
+                    )
                     self.stderr.write(f"Row data: {row}")
 
-            self.stdout.write(self.style.SUCCESS(f"Verse import complete. Processed {row_count} rows."))
+            self.stdout.write(
+                self.style.SUCCESS(
+                    f"Verse import complete. Processed {row_count} rows."
+                )
+            )

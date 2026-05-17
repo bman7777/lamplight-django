@@ -3,7 +3,7 @@ os-level dependencies
 `apk add python3 py3-pip py3-virtualenv git build-base python3-dev rust cargo libffi-dev certbot certbot-nginx nginx mariadb-connector-c-dev pkgconfig redis`
 
 ## virtual env
-python3 -m venv .venv
+python3.12 -m venv .venv
 . .venv/bin/activate
 pip install pip-tools
 

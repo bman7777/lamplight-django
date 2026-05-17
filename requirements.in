@@ -1,5 +1,6 @@
 black
 django>=5.2,<6.0
+django-haystack==3.3.0
 django-redis
 glom
 granian
@@ -11,3 +12,4 @@ python-dotenv
 redis
 requests
 uvloop
+Whoosh==2.7.4
