@@ -11,60 +11,63 @@ logger = logging.getLogger(__name__)
 
 
 def lookup(query, version="nasb95"):
-    """Search a string for an apparentl bible verse location in scripture."""
+    """Search a string for an apparent bible verse location in scripture."""
 
-    # check if the query is a specific bible resource
-    verse_matches = re.findall(
-        r"(\d*)[ ]*([a-zA-Z\s]+)[ ]*(-?\d+)\:?(-?\d*)", query.strip()
-    )
-    results = []
-    if verse_matches and (len(verse_matches[0]) == 4):
-        verse_matches = verse_matches[0]
+    matches = re.findall(r"(\d*)[ ]*([a-zA-Z\s]+)[ ]*(-?\d+)\:?(-?\d*)", query.strip())
+    if not matches or len(matches[0]) != 4:
+        return []
 
-        # normalize the string to avoid spelling/spacing/case inconsistencies
-        book = (verse_matches[0] + verse_matches[1]).strip().lower()
+    prefix_digits, name, chapter_str, verse_str = matches[0]
+    redis_conn = get_redis_connection("default")
+    book = _resolve_book(redis_conn, version, prefix_digits, name)
+    chapter = chapter_str if chapter_str else "1"
 
-        # find the mapping that fits best
-        redis_conn = get_redis_connection("default")
-        if not redis_conn.exists(f"{version}:{book}:1"):
-            book = (verse_matches[0] + " " + verse_matches[1]).strip().lower()
-            short_code = redis_conn.hget(f"{version}:books:{book}", "code")
-            if short_code:
-                book = short_code
-            else:
-                best_key = None
-                book_names = [
-                    key[len(f"{version}:books:") :]
-                    for key in redis_conn.scan_iter(match=f"{version}:books:*")
-                ]
+    if verse_str:
+        return [(version, book, chapter, verse_str)]
 
-                # is anything a prefix to the display name
-                if len(book) >= 3:
-                    for book_name in book_names:
-                        if book_name.startswith(book):
-                            best_key = book_name
-                            break
+    return [
+        (version, book, chapter, idx + 1)
+        for idx, _ in enumerate(
+            redis_conn.scan_iter(match=f"{version}:{book}:{chapter}:*")
+        )
+    ]
 
-                if not best_key:
-                    best_distance = 100
-                    # levenshtein the closest book name
-                    for book_name in book_names:
-                        dist = levenshtein.distance(book_name, book)
-                        if dist < best_distance:
-                            best_distance = dist
-                            best_key = book_name
 
-                if best_key:
-                    book = redis_conn.hget(f"{version}:books:{best_key}", "code")
+def _resolve_book(redis_conn, version, prefix_digits, name):
+    """Map a raw "1 john" / "luek" / "jhn" style fragment to a redis short code."""
 
-        chapter = verse_matches[2] if verse_matches[2] else "1"
+    candidate = (prefix_digits + name).strip().lower()
+    if redis_conn.exists(f"{version}:{candidate}:1"):
+        return candidate
 
-        if verse_matches[3]:
-            results.append((version, book, chapter, verse_matches[3]))
-        else:
-            for idx, _ in enumerate(
-                redis_conn.scan_iter(match=f"{version}:{book}:{chapter}:*")
-            ):
-                results.append((version, book, chapter, idx + 1))
+    spaced = (prefix_digits + " " + name).strip().lower()
+    short_code = redis_conn.hget(f"{version}:books:{spaced}", "code")
+    if short_code:
+        return short_code
 
-    return results
+    book_names = [
+        key[len(f"{version}:books:") :]
+        for key in redis_conn.scan_iter(match=f"{version}:books:*")
+    ]
+    best_key = _best_match(spaced, book_names)
+    if best_key:
+        return redis_conn.hget(f"{version}:books:{best_key}", "code")
+    return spaced
+
+
+def _best_match(book, book_names):
+    """Return the best display-name match for `book`, preferring prefix over levenshtein."""
+
+    if len(book) >= 3:
+        for name in book_names:
+            if name.startswith(book):
+                return name
+
+    best_key = None
+    best_distance = 100
+    for name in book_names:
+        dist = levenshtein.distance(name, book)
+        if dist < best_distance:
+            best_distance = dist
+            best_key = name
+    return best_key

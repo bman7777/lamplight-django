@@ -4,6 +4,8 @@
 #
 #    pip-compile requirements.in
 #
+annotated-types==0.7.0
+    # via pydantic
 asgiref==3.8.1
     # via django
 astroid==3.3.9
@@ -58,6 +60,7 @@ mysqlclient==2.2.7
 packaging==24.2
     # via
     #   black
+    #   django-haystack
     #   pytest
 pathspec==0.12.1
     # via black
@@ -67,6 +70,10 @@ platformdirs==4.3.7
     #   pylint
 pluggy==1.5.0
     # via pytest
+pydantic==2.13.4
+    # via -r requirements.in
+pydantic-core==2.46.4
+    # via pydantic
 pylint==3.3.6
     # via -r requirements.in
 pytest==8.3.5
@@ -85,6 +92,13 @@ sqlparse==0.5.3
     # via django
 tomlkit==0.13.2
     # via pylint
+typing-extensions==4.15.0
+    # via
+    #   pydantic
+    #   pydantic-core
+    #   typing-inspection
+typing-inspection==0.4.2
+    # via pydantic
 urllib3==2.3.0
     # via requests
 uvloop==0.22.1

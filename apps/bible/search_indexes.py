@@ -12,6 +12,8 @@ from .models import Verse
 
 
 class VerseIndex(indexes.SearchIndex, indexes.Indexable):
+    """Whoosh schema for the Verse model; populated by bible_to_haystack."""
+
     text = indexes.CharField(document=True, use_template=False, model_attr="text")
     version = indexes.CharField(model_attr="version", faceted=True)
     book = indexes.CharField(model_attr="book", faceted=True)
@@ -22,4 +24,5 @@ class VerseIndex(indexes.SearchIndex, indexes.Indexable):
         return Verse
 
     def index_queryset(self, using=None):
+        # pylint: disable=no-member  # Django attaches `objects` dynamically.
         return Verse.objects.none()

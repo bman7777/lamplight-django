@@ -15,6 +15,9 @@ DEFAULT_JSON = DATA_DIR / "bible.json"
 
 
 class Command(BaseCommand):
+    # pylint: disable=no-member  # `self.style` exposes dynamic SUCCESS/WARNING attrs.
+    """Management command that builds the Whoosh index from bible.json."""
+
     help = "Seed the Whoosh search index with bible verses from bible.json."
 
     def add_arguments(self, parser):
@@ -37,55 +40,19 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        json_file = options["json_file"]
-        batch_size = options["batch_size"]
-        using = options["using"]
-
-        try:
-            with open(json_file, "r", encoding="utf-8") as fh:
-                entries = json.load(fh)
-        except FileNotFoundError as exc:
-            raise CommandError(f"JSON file not found: {json_file}") from exc
-        except json.JSONDecodeError as exc:
-            raise CommandError(f"Invalid JSON in {json_file}: {exc}") from exc
-
-        backend = connections[using].get_backend()
+        entries = self._load_entries(options["json_file"])
+        backend = connections[options["using"]].get_backend()
         backend.clear(models=[Verse], commit=True)
 
         index = VerseIndex()
         batch = []
         total = 0
+        batch_size = options["batch_size"]
         for entry in entries:
-            pk_id = entry.get("id")
-            text = entry.get("_text_", "")
-            if not pk_id:
+            verse = self._verse_from_entry(entry)
+            if verse is None:
                 continue
-
-            parts = pk_id.split(":")
-            if len(parts) != 4:
-                self.stderr.write(self.style.WARNING(f"skipping malformed id: {pk_id}"))
-                continue
-
-            version, book, chapter_s, verse_s = parts
-            try:
-                chapter = int(chapter_s)
-                verse_num = int(verse_s)
-            except ValueError:
-                self.stderr.write(
-                    self.style.WARNING(f"skipping non-int chapter/verse in: {pk_id}")
-                )
-                continue
-
-            batch.append(
-                Verse(
-                    pk_id=pk_id,
-                    version=version,
-                    book=book,
-                    chapter=chapter,
-                    verse=verse_num,
-                    text=text,
-                )
-            )
+            batch.append(verse)
 
             if len(batch) >= batch_size:
                 backend.update(index, batch, commit=False)
@@ -101,4 +68,45 @@ class Command(BaseCommand):
         backend.update(index, [], commit=True)
         self.stdout.write(
             self.style.SUCCESS(f"Haystack index seeded. {total} verses written.")
+        )
+
+    @staticmethod
+    def _load_entries(json_file):
+        try:
+            with open(json_file, "r", encoding="utf-8") as fh:
+                return json.load(fh)
+        except FileNotFoundError as exc:
+            raise CommandError(f"JSON file not found: {json_file}") from exc
+        except json.JSONDecodeError as exc:
+            raise CommandError(f"Invalid JSON in {json_file}: {exc}") from exc
+
+    def _verse_from_entry(self, entry):
+        """Convert a bible.json entry into a Verse, or warn-and-skip if malformed."""
+
+        pk_id = entry.get("id")
+        if not pk_id:
+            return None
+
+        parts = pk_id.split(":")
+        if len(parts) != 4:
+            self.stderr.write(self.style.WARNING(f"skipping malformed id: {pk_id}"))
+            return None
+
+        version, book, chapter_s, verse_s = parts
+        try:
+            chapter = int(chapter_s)
+            verse_num = int(verse_s)
+        except ValueError:
+            self.stderr.write(
+                self.style.WARNING(f"skipping non-int chapter/verse in: {pk_id}")
+            )
+            return None
+
+        return Verse(
+            pk_id=pk_id,
+            version=version,
+            book=book,
+            chapter=chapter,
+            verse=verse_num,
+            text=entry.get("_text_", ""),
         )
