@@ -16,7 +16,9 @@ help:
 seed-data:
 	@echo "Seeding bible data..."
 	python manage.py bible_to_redis apps/bible/data/bible.csv
-	python manage.py bible_to_haystack
+	sudo mkdir -p /var/lib/lamplight/whoosh
+  	sudo chown -R django:django /var/lib/lamplight
+	sudo -u django python manage.py bible_to_haystack
 
 .PHONY: lint
 lint:
@@ -38,5 +40,5 @@ status-check:
 	@echo "Checking status..."
 	sudo systemctl status grafana-server | head -n 4
 	sudo systemctl status nginx | head -n 4
-	sudo systemctl status gunicorn | head -n 4
+	sudo systemctl status granian | head -n 4
 	sudo systemctl status redis | head -n 4

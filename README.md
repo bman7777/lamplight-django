@@ -3,12 +3,14 @@ os-level dependencies
 `apk add python3 py3-pip py3-virtualenv git build-base python3-dev rust cargo libffi-dev certbot certbot-nginx nginx mariadb-connector-c-dev pkgconfig redis`
 
 ## virtual env
+```
 python3.12 -m venv .venv
 . .venv/bin/activate
 pip install pip-tools
+```
 
 ## Nginx Config(s)
-- etc/nginx/http.d/default.conf
+- `etc/nginx/http.d/default.conf`
 
 ```
 server {
@@ -35,16 +37,28 @@ server {
 ```
 
 ## Granian
+
+```
 /etc/init.d/granian
 chmod +x /etc/init.d/granian
 
 /etc/conf.d/granian (for exporting secret env vars)
+```
 
+```
+export DJANGO_SETTINGS_MODULE="lamplight.settings"
+export SECRET_KEY="____________"
+export DJANGO_DEBUG="0"
+export WHOOSH_INDEX_PATH=/var/lib/lamplight/whoosh
+```
+
+```
 rc-update add granian default
 rc-service granian start
+```
 
 ## view error logs
-tail -f /var/log/granian/granian.err
+`tail -f /var/log/granian/granian.err`
 
 ## Deploying python change(s)
 Granian provides a socket that launches the application's asgi.  Therefore, we need to reload the project:
