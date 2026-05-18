@@ -6,6 +6,7 @@ glom
 granian
 isort
 mysqlclient
+pydantic>=2
 pylint
 pytest-django
 python-dotenv

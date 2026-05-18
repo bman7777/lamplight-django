@@ -17,6 +17,8 @@ class Verse(models.Model):
     verse = models.IntegerField()
     text = models.TextField()
 
-    class Meta:
+    class Meta:  # pylint: disable=too-few-public-methods
+        """Django model metadata."""
+
         managed = False
         app_label = "bible"

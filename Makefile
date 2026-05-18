@@ -25,7 +25,7 @@ lint:
 	@echo "Linting..."
 	black .
 	isort .
-	find . -path ./.venv -prune -o -name '*.py' -exec pylint {} +
+	find . -path ./.venv -prune -o -path '*/migrations/*' -prune -o -name '*.py' -exec pylint {} +
 
 
 .PHONY: py-deps

@@ -37,6 +37,8 @@ def fulltext_lookup(query, limit=DEFAULT_LIMIT):
 
         term_hits = SearchQuerySet().filter(content=query)[:limit]
         return _hits_to_tuples(term_hits)
-    except Exception:
+    except Exception:  # pylint: disable=broad-exception-caught
+        # Defensive: any backend failure (missing index, parse error, etc.)
+        # degrades to "no results" rather than 500ing the request.
         logger.exception("haystack fulltext lookup failed for query=%r", query)
         return []
