@@ -1,6 +1,6 @@
 # lamplight-django
 os-level dependencies
-`apk add python3 py3-pip py3-virtualenv git build-base python3-dev rust cargo libffi-dev certbot certbot-nginx nginx mariadb-connector-c-dev pkgconfig redis`
+`apk add python3 py3-pip py3-virtualenv git build-base python3-dev rust cargo libffi-dev certbot certbot-nginx nginx mariadb-connector-c-dev pkgconfig redis sudo`
 
 ## virtual env
 ```

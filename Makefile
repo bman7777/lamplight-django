@@ -18,7 +18,7 @@ seed-data:
 	python manage.py bible_to_redis apps/bible/data/bible.csv
 	sudo mkdir -p /var/lib/lamplight/whoosh
   	sudo chown -R django:django /var/lib/lamplight
-	sudo -u django python manage.py bible_to_haystack
+	su django -c '. /etc/conf.d/granian && python manage.py bible_to_haystack'
 
 .PHONY: lint
 lint:
