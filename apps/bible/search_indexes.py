@@ -24,5 +24,4 @@ class VerseIndex(indexes.SearchIndex, indexes.Indexable):
         return Verse
 
     def index_queryset(self, using=None):
-        # pylint: disable=no-member  # Django attaches `objects` dynamically.
         return Verse.objects.none()

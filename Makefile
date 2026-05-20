@@ -35,6 +35,12 @@ py-deps:
 	pip install -r requirements.txt
 
 
+.PHONY: py-install
+py-install:
+	@echo "Installing dependencies..."
+	pip install -r requirements.txt
+
+
 .PHONY: status-check
 status-check:
 	@echo "Checking status..."

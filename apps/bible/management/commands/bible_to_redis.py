@@ -13,7 +13,6 @@ BOOK_MAP_PATH = DATA_DIR / "book_map.json"
 
 
 class Command(BaseCommand):
-    # pylint: disable=no-member  # `self.style` exposes dynamic SUCCESS/ERROR attrs.
     """Management command that loads bible CSV verse data into Redis."""
 
     help = "Import bible CSV data into Redis hashes."
