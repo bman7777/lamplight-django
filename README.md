@@ -1,6 +1,6 @@
 # lamplight-django
 os-level dependencies
-`apk add python3 py3-pip py3-virtualenv git build-base python3-dev rust cargo libffi-dev certbot certbot-nginx nginx mariadb-connector-c-dev pkgconfig redis sudo`
+`apk add python3 py3-pip py3-virtualenv git build-base python3-dev rust cargo libffi-dev certbot certbot-nginx nginx sqlite pkgconfig redis sudo`
 
 ## virtual env
 ```
@@ -23,6 +23,15 @@ server {
 		try_files $uri $uri/ /index.html;
 	}
 
+	location /lamplight/ {
+		alias /var/www/lamplight-react/dist/;
+		try_files $uri $uri/ /lamplight/index.html;
+	}
+
+	location = /lamplight {
+		return 301 /lamplight/;
+	}
+
 	location /ll {
 		proxy_pass http://django;
 		proxy_set_header Host $host;
@@ -35,6 +44,9 @@ server {
 	}
 }
 ```
+
+Reload nginx with:
+`rc-service nginx reload`
 
 ## Granian
 

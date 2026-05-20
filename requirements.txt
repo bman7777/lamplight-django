@@ -55,8 +55,6 @@ mccabe==0.7.0
     # via pylint
 mypy-extensions==1.0.0
     # via black
-mysqlclient==2.2.7
-    # via -r requirements.in
 packaging==24.2
     # via
     #   black

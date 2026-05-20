@@ -1,8 +1,8 @@
 """Pydantic schemas used by the bible app's HTTP handlers."""
 
-from typing import Literal, Union
+from typing import Any, Literal, Union
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from .utilities import datasets
 
@@ -44,3 +44,17 @@ class VersesQuery(BaseModel):
         if parsed < 1:
             raise ValueError("must be '*' or a positive integer")
         return parsed
+
+
+class ConcordanceEntryResponse(BaseModel):
+    """Serialized shape of a ConcordanceEntry returned by the concordance view."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    concord_id: str
+    original_word: str
+    transliteration: str
+    part_of_speech: str
+    english_translations: list[Any]
+    outline_definitions: list[Any]
+    strongs_definition: list[Any]
