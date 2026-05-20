@@ -16,7 +16,6 @@ BATCH_SIZE = 1000
 
 
 class Command(BaseCommand):
-    # pylint: disable=no-member  # `self.style` exposes dynamic SUCCESS/ERROR attrs.
     """Management command that loads concordance.json into the database."""
 
     help = "Import Strong's concordance JSON into the ConcordanceEntry table."

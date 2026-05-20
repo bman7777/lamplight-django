@@ -15,7 +15,6 @@ DEFAULT_JSON = DATA_DIR / "bible.json"
 
 
 class Command(BaseCommand):
-    # pylint: disable=no-member  # `self.style` exposes dynamic SUCCESS/WARNING attrs.
     """Management command that builds the Whoosh index from bible.json."""
 
     help = "Seed the Whoosh search index with bible verses from bible.json."
