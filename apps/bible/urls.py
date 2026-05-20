@@ -11,4 +11,9 @@ urlpatterns = [
         views.verses,
         name="verses",
     ),
+    path(
+        "concordance/<str:concord_id>/",
+        views.concordance,
+        name="concordance",
+    ),
 ]

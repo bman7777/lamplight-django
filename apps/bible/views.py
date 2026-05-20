@@ -4,11 +4,13 @@ import logging
 import random
 
 from django.http import HttpResponse, JsonResponse
+from django.shortcuts import get_object_or_404
 from django_redis import get_redis_connection
 
 from lamplight.decorators import validate_params
 
-from .schemas import VersesQuery
+from .models import ConcordanceEntry
+from .schemas import ConcordanceEntryResponse, VersesQuery
 from .utilities import bible_locator, datasets, haystack_search
 
 logger = logging.getLogger(__name__)
@@ -90,6 +92,13 @@ def verses(request, params):  # pylint: disable=unused-argument
     if seed is not None:
         body["seed"] = seed
     return JsonResponse(body)
+
+
+def concordance(request, concord_id):  # pylint: disable=unused-argument
+    """Return the Strong's concordance entry for the given ID (e.g. G0001, H0001)."""
+
+    entry = get_object_or_404(ConcordanceEntry, pk=concord_id)
+    return JsonResponse(ConcordanceEntryResponse.model_validate(entry).model_dump())
 
 
 def _hydrate_verses(refs, version):
