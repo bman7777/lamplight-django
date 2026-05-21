@@ -82,3 +82,55 @@ class ConcordanceVerseMapping(models.Model):
 
     def __str__(self) -> str:
         return f"{self.concord_id} @ {self.version}:{self.book}:{self.chapter}:{self.verse}"
+
+
+class Author(models.Model):
+    """Canonical author identity. Looked up by name to resolve author search criteria."""
+
+    name = models.CharField(max_length=64, unique=True)
+
+    class Meta:  # pylint: disable=too-few-public-methods
+        """Django model metadata."""
+
+        app_label = "bible"
+
+    def __str__(self) -> str:
+        return self.name
+
+
+class Authorship(models.Model):
+    """Author(s) and approximate date of writing for a book or specific chapter.
+
+    book_name stores the short book code (e.g. "gen", "jhn") matching
+    apps/bible/data/book_map.json. author is a list of Author.id values.
+    A NULL chapter means "the whole book"; a chapter-specific row overrides
+    the NULL row for that chapter (used for Psalms where attribution varies).
+    """
+
+    book_name = models.CharField(max_length=8)
+    chapter = models.IntegerField(null=True, blank=True)
+    author = models.JSONField(default=list)
+    date = models.IntegerField()
+    is_bc = models.BooleanField()
+
+    class Meta:  # pylint: disable=too-few-public-methods
+        """Django model metadata."""
+
+        app_label = "bible"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["book_name", "chapter"],
+                name="unique_book_chapter_specific",
+                condition=models.Q(chapter__isnull=False),
+            ),
+            models.UniqueConstraint(
+                fields=["book_name"],
+                name="unique_book_chapter_null",
+                condition=models.Q(chapter__isnull=True),
+            ),
+        ]
+
+    def __str__(self) -> str:
+        era = "BC" if self.is_bc else "AD"
+        suffix = f":{self.chapter}" if self.chapter is not None else ""
+        return f"{self.book_name}{suffix} ({self.date} {era})"
