@@ -1,15 +1,17 @@
 """Apply a list of SearchCriterion to the bible corpus.
 
-Each criterion either *produces* a candidate verse set (``text``, ``english``)
-or *restricts* an existing set (``book``, ``testament``). Multiple criteria
-are AND'd together. Criteria for which we don't yet have data
-(``hebrew``, ``greek``, ``author``, ``speaker``) are silently dropped — the
-TODO comments below mark where each missing data source needs to plug in.
+Each criterion either *produces* a candidate verse set (``text``, ``english``,
+``hebrew``, ``greek``) or *restricts* an existing set (``book``, ``testament``).
+Multiple criteria are AND'd together. Criteria for which we don't yet have data
+(``author``, ``speaker``) are silently dropped — the TODO comments below mark
+where each missing data source needs to plug in.
 """
 
 from functools import lru_cache
 
+from ..models import ConcordanceVerseMapping
 from . import bible_locator, datasets, haystack_search
+from .concord import normalize_concord_id
 
 VERSION = "nasb95"
 INTERNAL_CAP = 10000  # max producer hits considered before pagination
@@ -21,7 +23,9 @@ def combine(criteria, page, limit):
     Refs are ``(version, book_code, chapter, verse)`` tuples in canonical order.
     """
 
-    producers = [c for c in criteria if c.type in {"text", "english"}]
+    producers = [
+        c for c in criteria if c.type in {"text", "english", "hebrew", "greek"}
+    ]
     restrictors = [c for c in criteria if c.type in {"book", "testament"}]
 
     if producers:
@@ -55,6 +59,14 @@ def _producer_hits(criterion):
     if criterion.type == "english":
         refs = haystack_search.fulltext_lookup(criterion.value, limit=INTERNAL_CAP)
         return {_normalize(*r) for r in refs}
+    if criterion.type in {"hebrew", "greek"}:
+        concord_id = normalize_concord_id(criterion.concordance_id)
+        if not concord_id:
+            return set()
+        rows = ConcordanceVerseMapping.objects.filter(
+            concord_id=concord_id, version=VERSION
+        ).values_list("book", "chapter", "verse")
+        return {_normalize(VERSION, book, ch, v) for book, ch, v in rows}
     return set()
 
 
@@ -96,8 +108,6 @@ def _canonical_key(ref):
     return (_canon_order().get(ref[1], 999), ref[2], ref[3])
 
 
-# TODO: hebrew / greek criteria need per-verse Strong's concordance tagging in
-# bible.json (each verse gets a list of concord_ids) before we can filter on them.
 # TODO: author criterion needs a book-author mapping (e.g. apps/bible/data/authors.json)
 # that returns the human author for each book code.
 # TODO: speaker criterion needs per-pericope speaker annotation; no data source yet.

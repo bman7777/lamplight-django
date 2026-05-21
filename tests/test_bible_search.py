@@ -147,18 +147,119 @@ def test_ignored_only_returns_empty(client):
 
 
 def test_ignored_alongside_producer_does_not_affect_results(client):
-    """A non-restricting criterion paired with a producer leaves it unchanged."""
+    """A non-producing, non-restricting criterion alongside a producer leaves it unchanged."""
     base = _post(client, [{"type": "text", "value": "Jesus wept"}])
     mixed = _post(
         client,
         [
             {"type": "text", "value": "Jesus wept"},
-            {"type": "hebrew", "value": "ab", "concordance_id": "H0001"},
+            {"type": "author", "value": "Paul"},
         ],
     )
     assert base.status_code == 200
     assert mixed.status_code == 200
     assert base.json() == mixed.json()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "criterion_type,concord_id,expected_refs",
+    [
+        (
+            "hebrew",
+            "H0001",
+            {("Genesis", 2, 24), ("Genesis", 17, 4), ("Exodus", 20, 12)},
+        ),
+        ("greek", "G0001", {("Revelation", 1, 8), ("Revelation", 22, 13)}),
+    ],
+)
+def test_concord_producer_returns_mapped_verses(
+    client, criterion_type, concord_id, expected_refs
+):
+    """A hebrew/greek criterion returns every verse mapped to its concordance ID."""
+    response = _post(
+        client,
+        [{"type": criterion_type, "value": "x", "concordance_id": concord_id}],
+    )
+    assert response.status_code == 200
+    out = response.json()
+    assert out["total"] == len(expected_refs)
+    assert {
+        (v["book"], v["chapter"], v["verse"]) for v in out["verses"]
+    } == expected_refs
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "producer,restrictor,expected_total",
+    [
+        # H0001 has 3 OT mappings; 2 in Genesis, 1 in Exodus.
+        (
+            {"type": "hebrew", "concordance_id": "H0001"},
+            {"type": "book", "value": "Genesis"},
+            2,
+        ),
+        # Hebrew concords are OT-only — testament=new restricts to nothing.
+        (
+            {"type": "hebrew", "concordance_id": "H0001"},
+            {"type": "testament", "value": "new"},
+            0,
+        ),
+        # Greek concords are NT-only — testament=old restricts to nothing.
+        (
+            {"type": "greek", "concordance_id": "G0001"},
+            {"type": "testament", "value": "old"},
+            0,
+        ),
+        # G0001 has 2 mappings, both in Revelation (NT).
+        (
+            {"type": "greek", "concordance_id": "G0001"},
+            {"type": "testament", "value": "new"},
+            2,
+        ),
+    ],
+)
+def test_concord_producer_with_restrictor(client, producer, restrictor, expected_total):
+    """A hebrew/greek producer AND'd with a book/testament restrictor narrows correctly."""
+    response = _post(client, [{**producer, "value": "x"}, restrictor])
+    assert response.status_code == 200
+    assert response.json()["total"] == expected_total
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "concord_id,expected_total",
+    [
+        ("H0001", 3),  # canonical
+        ("h0001", 3),  # lowercase prefix
+        ("H1", 3),  # unpadded
+        ("h1", 3),  # lowercase + unpadded
+        ("H9999", 0),  # well-formed but no mappings
+        ("notanid", 0),  # malformed → normalize_concord_id returns None
+    ],
+)
+def test_hebrew_concordance_id_resolution(client, concord_id, expected_total):
+    """Hebrew IDs are normalized; unmapped or malformed IDs yield an empty result set."""
+    response = _post(
+        client, [{"type": "hebrew", "value": "x", "concordance_id": concord_id}]
+    )
+    assert response.status_code == 200
+    assert response.json()["total"] == expected_total
+
+
+@pytest.mark.django_db
+def test_two_concord_producers_intersect(client):
+    """Two concord producers AND'd together return only verses tagged with both."""
+    response = _post(
+        client,
+        [
+            {"type": "hebrew", "value": "x", "concordance_id": "H0001"},
+            {"type": "hebrew", "value": "x", "concordance_id": "H0734"},
+        ],
+    )
+    assert response.status_code == 200
+    # H0001 hits Genesis/Exodus; H0734 hits Psalms — disjoint, intersection empty.
+    assert response.json() == {"total": 0, "verses": []}
 
 
 @pytest.mark.parametrize(

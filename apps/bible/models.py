@@ -46,3 +46,39 @@ class ConcordanceEntry(models.Model):
 
     def __str__(self) -> str:
         return f"{self.concord_id} {self.transliteration}"
+
+
+class ConcordanceVerseMapping(models.Model):
+    """Maps a Strong's concordance entry to a verse it appears in.
+
+    Sourced from the <H####>/<G####> markup in apps/bible/data/bible.csv.
+    The verse is denormalized into version/book/chapter/verse fields because
+    the Verse model is managed=False (Redis + Whoosh, no DB table).
+    """
+
+    concord = models.ForeignKey(
+        ConcordanceEntry,
+        on_delete=models.CASCADE,
+        related_name="verse_mappings",
+    )
+    version = models.CharField(max_length=16)
+    book = models.CharField(max_length=8)
+    chapter = models.IntegerField()
+    verse = models.IntegerField()
+
+    class Meta:  # pylint: disable=too-few-public-methods
+        """Django model metadata."""
+
+        app_label = "bible"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["concord", "version", "book", "chapter", "verse"],
+                name="unique_concord_per_verse",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["version", "book", "chapter", "verse"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.concord_id} @ {self.version}:{self.book}:{self.chapter}:{self.verse}"
