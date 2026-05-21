@@ -17,6 +17,7 @@ from .models import ConcordanceEntry
 from .schemas import (ConcordanceEntryResponse, SearchPageQuery, SearchRequest,
                       VersesQuery)
 from .utilities import datasets, search_criteria
+from .utilities.concord import normalize_concord_id
 
 logger = logging.getLogger(__name__)
 
@@ -92,9 +93,7 @@ def verses(request, params):  # pylint: disable=unused-argument
 def concordance(request, concord_id):  # pylint: disable=unused-argument
     """Return the Strong's concordance entry for the given ID (e.g. G0001, H0001)."""
 
-    prefix, digits = concord_id[:1].upper(), concord_id[1:]
-    if prefix in ("G", "H") and digits.isdigit():
-        concord_id = f"{prefix}{int(digits):04d}"
+    concord_id = normalize_concord_id(concord_id) or concord_id
     entry = get_object_or_404(ConcordanceEntry, pk=concord_id)
     return JsonResponse(ConcordanceEntryResponse.model_validate(entry).model_dump())
 

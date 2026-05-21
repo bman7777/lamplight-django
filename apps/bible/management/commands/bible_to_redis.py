@@ -53,6 +53,7 @@ class Command(BaseCommand):
         )
 
     def _import_verses(self, redis_conn, book_map, csv_file, prefix):
+        # pylint: disable=duplicate-code
         try:
             file = open(csv_file, "r", newline="", encoding="utf-8")
         except FileNotFoundError as exc:
