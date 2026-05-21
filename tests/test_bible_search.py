@@ -140,8 +140,8 @@ def test_pagination_advances_through_results(client):
 
 
 def test_ignored_only_returns_empty(client):
-    """A criterion that produces no verses on its own (e.g. author) yields an empty result."""
-    response = _post(client, [{"type": "author", "value": "Paul"}])
+    """A criterion that produces no verses on its own (e.g. speaker) yields an empty result."""
+    response = _post(client, [{"type": "speaker", "value": "Jesus"}])
     assert response.status_code == 200
     assert response.json() == {"total": 0, "verses": []}
 
@@ -153,7 +153,7 @@ def test_ignored_alongside_producer_does_not_affect_results(client):
         client,
         [
             {"type": "text", "value": "Jesus wept"},
-            {"type": "author", "value": "Paul"},
+            {"type": "speaker", "value": "Jesus"},
         ],
     )
     assert base.status_code == 200
@@ -245,6 +245,118 @@ def test_hebrew_concordance_id_resolution(client, concord_id, expected_total):
     )
     assert response.status_code == 200
     assert response.json()["total"] == expected_total
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "value,expected_books",
+    [
+        (
+            "Paul",
+            {
+                "Romans",
+                "1 Corinthians",
+                "2 Corinthians",
+                "Galatians",
+                "Ephesians",
+                "Philippians",
+                "Colossians",
+                "1 Thessalonians",
+                "2 Thessalonians",
+                "1 Timothy",
+                "2 Timothy",
+                "Titus",
+                "Philemon",
+                "Hebrews",
+            },
+        ),
+        # Case-insensitive name match. Moses also wrote Psalm 90.
+        (
+            "moses",
+            {
+                "Genesis",
+                "Exodus",
+                "Leviticus",
+                "Numbers",
+                "Deuteronomy",
+                "Job",
+                "Psalms",
+            },
+        ),
+        # John appears in 5 books (the gospel, three epistles, Revelation).
+        ("John", {"John", "1 John", "2 John", "3 John", "Revelation"}),
+        # Unknown name → empty result, no error.
+        ("NotARealAuthor", set()),
+    ],
+)
+def test_author_producer_returns_books_by_author(client, value, expected_books):
+    """An author criterion expands to every verse of every book attributed to that author."""
+    response = _post(client, [{"type": "author", "value": value}])
+    assert response.status_code == 200
+    out = response.json()
+    books_returned = {v["book"] for v in out["verses"]}
+    if expected_books:
+        # The first page may not include every book; pull all pages via a high limit.
+        response = _post(
+            client, [{"type": "author", "value": value}], query="limit=100&page=1"
+        )
+        out = response.json()
+        # Cross-check: total verses come from books we expect, no unexpected books appear.
+        books_returned = {v["book"] for v in out["verses"]}
+        assert books_returned.issubset(expected_books)
+        assert out["total"] > 0
+    else:
+        assert out == {"total": 0, "verses": []}
+
+
+@pytest.mark.django_db
+def test_author_psalm_chapter_attribution(client):
+    """A chapter-specific Authorship row scopes the producer to that chapter only.
+
+    Moses wrote Psalm 90 — the producer should expose that one psalm under
+    his name without bleeding into the rest of the Psalter.
+    """
+    response = _post(
+        client,
+        [{"type": "author", "value": "Moses"}, {"type": "book", "value": "Psalms"}],
+        query="limit=100",
+    )
+    assert response.status_code == 200
+    out = response.json()
+    chapters = {v["chapter"] for v in out["verses"]}
+    assert chapters == {90}
+
+
+@pytest.mark.django_db
+def test_author_chapter_specific_only_returns_claimed_chapters(client):
+    """David appears only in chapter-specific Psalms rows — no other books.
+
+    Psalms 1, 2, 10 have no chapter row, so they must NOT appear under David.
+    """
+    response = _post(client, [{"type": "author", "value": "David"}], query="limit=100")
+    assert response.status_code == 200
+    out = response.json()
+    assert {v["book"] for v in out["verses"]} == {"Psalms"}
+    chapters = {v["chapter"] for v in out["verses"]}
+    assert 3 in chapters
+    assert chapters.isdisjoint({1, 2, 10})
+
+
+@pytest.mark.django_db
+def test_author_producer_intersects_with_book_restrictor(client):
+    """author=Paul ∩ book=Romans returns only Romans verses (433 in nasb95)."""
+    response = _post(
+        client,
+        [
+            {"type": "author", "value": "Paul"},
+            {"type": "book", "value": "Romans"},
+        ],
+        query="limit=100",
+    )
+    assert response.status_code == 200
+    out = response.json()
+    assert out["total"] == 433
+    assert {v["book"] for v in out["verses"]} == {"Romans"}
 
 
 @pytest.mark.django_db

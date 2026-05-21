@@ -1,15 +1,15 @@
 """Apply a list of SearchCriterion to the bible corpus.
 
 Each criterion either *produces* a candidate verse set (``text``, ``english``,
-``hebrew``, ``greek``) or *restricts* an existing set (``book``, ``testament``).
-Multiple criteria are AND'd together. Criteria for which we don't yet have data
-(``author``, ``speaker``) are silently dropped — the TODO comments below mark
-where each missing data source needs to plug in.
+``hebrew``, ``greek``, ``author``) or *restricts* an existing set (``book``,
+``testament``). Multiple criteria are AND'd together. Criteria for which we
+don't yet have data (``speaker``) are silently dropped — the TODO comment
+below marks where the missing data source needs to plug in.
 """
 
 from functools import lru_cache
 
-from ..models import ConcordanceVerseMapping
+from ..models import Author, Authorship, ConcordanceVerseMapping
 from . import bible_locator, datasets, haystack_search
 from .concord import normalize_concord_id
 
@@ -23,9 +23,7 @@ def combine(criteria, page, limit):
     Refs are ``(version, book_code, chapter, verse)`` tuples in canonical order.
     """
 
-    producers = [
-        c for c in criteria if c.type in {"text", "english", "hebrew", "greek"}
-    ]
+    producers = [c for c in criteria if c.type in _PRODUCERS]
     restrictors = [c for c in criteria if c.type in {"book", "testament"}]
 
     if producers:
@@ -50,24 +48,59 @@ def combine(criteria, page, limit):
 
 
 def _producer_hits(criterion):
-    if criterion.type == "text":
-        refs = bible_locator.lookup(criterion.value)
-        if refs:
-            return {_normalize(*r) for r in refs}
+    handler = _PRODUCERS.get(criterion.type)
+    return handler(criterion) if handler else set()
+
+
+def _text_hits(criterion):
+    refs = bible_locator.lookup(criterion.value)
+    if not refs:
         refs = haystack_search.fulltext_lookup(criterion.value, limit=INTERNAL_CAP)
-        return {_normalize(*r) for r in refs}
-    if criterion.type == "english":
-        refs = haystack_search.fulltext_lookup(criterion.value, limit=INTERNAL_CAP)
-        return {_normalize(*r) for r in refs}
-    if criterion.type in {"hebrew", "greek"}:
-        concord_id = normalize_concord_id(criterion.concordance_id)
-        if not concord_id:
-            return set()
-        rows = ConcordanceVerseMapping.objects.filter(
-            concord_id=concord_id, version=VERSION
-        ).values_list("book", "chapter", "verse")
-        return {_normalize(VERSION, book, ch, v) for book, ch, v in rows}
-    return set()
+    return {_normalize(*r) for r in refs}
+
+
+def _english_hits(criterion):
+    refs = haystack_search.fulltext_lookup(criterion.value, limit=INTERNAL_CAP)
+    return {_normalize(*r) for r in refs}
+
+
+def _concord_hits(criterion):
+    concord_id = normalize_concord_id(criterion.concordance_id)
+    if not concord_id:
+        return set()
+    rows = ConcordanceVerseMapping.objects.filter(
+        concord_id=concord_id, version=VERSION
+    ).values_list("book", "chapter", "verse")
+    return {_normalize(VERSION, book, ch, v) for book, ch, v in rows}
+
+
+def _author_hits(criterion):
+    author_id = (
+        Author.objects.filter(name__iexact=criterion.value.strip())
+        .values_list("id", flat=True)
+        .first()
+    )
+    if author_id is None:
+        return set()
+    result = set()
+    for row in Authorship.objects.only("book_name", "chapter", "author"):
+        if author_id not in row.author:
+            continue
+        chapter = "*" if row.chapter is None else row.chapter
+        for code, ch, v in datasets.enumerate_verses(
+            "bible", row.book_name, chapter, "*"
+        ):
+            result.add(_normalize(VERSION, code, ch, v))
+    return result
+
+
+_PRODUCERS = {
+    "text": _text_hits,
+    "english": _english_hits,
+    "hebrew": _concord_hits,
+    "greek": _concord_hits,
+    "author": _author_hits,
+}
 
 
 def _restrictor_predicate(criterion):
@@ -108,6 +141,4 @@ def _canonical_key(ref):
     return (_canon_order().get(ref[1], 999), ref[2], ref[3])
 
 
-# TODO: author criterion needs a book-author mapping (e.g. apps/bible/data/authors.json)
-# that returns the human author for each book code.
 # TODO: speaker criterion needs per-pericope speaker annotation; no data source yet.
