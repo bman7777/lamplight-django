@@ -1,6 +1,6 @@
 """Pydantic schemas used by the bible app's HTTP handlers."""
 
-from typing import Any, Literal, Union
+from typing import Annotated, Any, Literal, Union
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -44,6 +44,84 @@ class VersesQuery(BaseModel):
         if parsed < 1:
             raise ValueError("must be '*' or a positive integer")
         return parsed
+
+
+class _TextCriterion(BaseModel):
+    type: Literal["text"]
+    value: str = Field(min_length=1)
+
+
+class _EnglishCriterion(BaseModel):
+    type: Literal["english"]
+    value: str = Field(min_length=1)
+
+
+class _HebrewCriterion(BaseModel):
+    type: Literal["hebrew"]
+    value: str = Field(min_length=1)
+    concordance_id: str = Field(min_length=1)
+
+
+class _GreekCriterion(BaseModel):
+    type: Literal["greek"]
+    value: str = Field(min_length=1)
+    concordance_id: str = Field(min_length=1)
+
+
+class _AuthorCriterion(BaseModel):
+    type: Literal["author"]
+    value: str = Field(min_length=1)
+
+
+class _SpeakerCriterion(BaseModel):
+    type: Literal["speaker"]
+    value: str = Field(min_length=1)
+
+
+class _BookCriterion(BaseModel):
+    type: Literal["book"]
+    value: str
+
+    @field_validator("value")
+    @classmethod
+    def _resolve(cls, value):
+        code = datasets.resolve_book(value)
+        if code is None:
+            raise ValueError(f"unknown book: {value}")
+        return code
+
+
+class _TestamentCriterion(BaseModel):
+    type: Literal["testament"]
+    value: Literal["old", "new"]
+
+
+SearchCriterion = Annotated[
+    Union[
+        _TextCriterion,
+        _EnglishCriterion,
+        _HebrewCriterion,
+        _GreekCriterion,
+        _AuthorCriterion,
+        _SpeakerCriterion,
+        _BookCriterion,
+        _TestamentCriterion,
+    ],
+    Field(discriminator="type"),
+]
+
+
+class SearchRequest(BaseModel):
+    """JSON body for the search endpoint: a non-empty list of criteria AND'd together."""
+
+    criteria: list[SearchCriterion] = Field(min_length=1)
+
+
+class SearchPageQuery(BaseModel):
+    """Pagination params for the search endpoint."""
+
+    page: int = Field(default=1, ge=1)
+    limit: int = Field(default=25, ge=1, le=100)
 
 
 class ConcordanceEntryResponse(BaseModel):
