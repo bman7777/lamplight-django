@@ -139,26 +139,31 @@ def test_pagination_advances_through_results(client):
     assert p1["verses"][0] != p2["verses"][0]
 
 
-def test_ignored_only_returns_empty(client):
-    """A criterion that produces no verses on its own (e.g. speaker) yields an empty result."""
+@pytest.mark.django_db
+def test_speaker_criterion_returns_attributed_verses(client):
+    """A speaker criterion resolves to verses where that speaker is attributed."""
     response = _post(client, [{"type": "speaker", "value": "Jesus"}])
     assert response.status_code == 200
+    out = response.json()
+    assert out["total"] == 2
+    refs = {(v["book"], v["chapter"], v["verse"]) for v in out["verses"]}
+    assert refs == {("Matthew", 5, 3), ("John", 3, 3)}
+
+
+@pytest.mark.django_db
+def test_speaker_criterion_case_insensitive(client):
+    """Speaker lookups match case-insensitively."""
+    response = _post(client, [{"type": "speaker", "value": "jesus"}])
+    assert response.status_code == 200
+    assert response.json()["total"] == 2
+
+
+@pytest.mark.django_db
+def test_speaker_criterion_unknown_name_returns_empty(client):
+    """A speaker criterion with no matching name resolves to zero hits."""
+    response = _post(client, [{"type": "speaker", "value": "NotARealSpeakerName"}])
+    assert response.status_code == 200
     assert response.json() == {"total": 0, "verses": []}
-
-
-def test_ignored_alongside_producer_does_not_affect_results(client):
-    """A non-producing, non-restricting criterion alongside a producer leaves it unchanged."""
-    base = _post(client, [{"type": "text", "value": "Jesus wept"}])
-    mixed = _post(
-        client,
-        [
-            {"type": "text", "value": "Jesus wept"},
-            {"type": "speaker", "value": "Jesus"},
-        ],
-    )
-    assert base.status_code == 200
-    assert mixed.status_code == 200
-    assert base.json() == mixed.json()
 
 
 @pytest.mark.django_db

@@ -1,15 +1,14 @@
 """Apply a list of SearchCriterion to the bible corpus.
 
 Each criterion either *produces* a candidate verse set (``text``, ``english``,
-``hebrew``, ``greek``, ``author``) or *restricts* an existing set (``book``,
-``testament``). Multiple criteria are AND'd together. Criteria for which we
-don't yet have data (``speaker``) are silently dropped — the TODO comment
-below marks where the missing data source needs to plug in.
+``hebrew``, ``greek``, ``author``, ``speaker``) or *restricts* an existing
+set (``book``, ``testament``). Multiple criteria are AND'd together.
 """
 
 from functools import lru_cache
 
-from ..models import Author, Authorship, ConcordanceVerseMapping
+from ..models import (Author, Authorship, ConcordanceVerseMapping,
+                      VerseSpeakerMapping)
 from . import bible_locator, datasets, haystack_search
 from .concord import normalize_concord_id
 
@@ -94,12 +93,21 @@ def _author_hits(criterion):
     return result
 
 
+def _speaker_hits(criterion):
+    rows = VerseSpeakerMapping.objects.filter(
+        speaker__name__iexact=criterion.value.strip(),
+        version=VERSION,
+    ).values_list("book", "chapter", "verse")
+    return {_normalize(VERSION, book, ch, v) for book, ch, v in rows}
+
+
 _PRODUCERS = {
     "text": _text_hits,
     "english": _english_hits,
     "hebrew": _concord_hits,
     "greek": _concord_hits,
     "author": _author_hits,
+    "speaker": _speaker_hits,
 }
 
 
@@ -139,6 +147,3 @@ def _canon_order():
 
 def _canonical_key(ref):
     return (_canon_order().get(ref[1], 999), ref[2], ref[3])
-
-
-# TODO: speaker criterion needs per-pericope speaker annotation; no data source yet.
