@@ -134,3 +134,62 @@ class Authorship(models.Model):
         era = "BC" if self.is_bc else "AD"
         suffix = f":{self.chapter}" if self.chapter is not None else ""
         return f"{self.book_name}{suffix} ({self.date} {era})"
+
+
+class Speaker(models.Model):
+    """A canonical speaker name surfaced by apps/bible/data/speaker.json.
+
+    Verses can have multiple speakers; the relationship lives in
+    VerseSpeakerMapping. Names are unique and matched case-insensitively
+    by search criteria.
+    """
+
+    name = models.CharField(max_length=128, unique=True)
+
+    class Meta:  # pylint: disable=too-few-public-methods
+        """Django model metadata."""
+
+        app_label = "bible"
+
+    def __str__(self) -> str:
+        return self.name
+
+
+class VerseSpeakerMapping(models.Model):
+    """Maps a Speaker to a verse they speak in.
+
+    Sourced from apps/bible/data/speaker.json. The verse is denormalized
+    into version/book/chapter/verse fields because the Verse model is
+    managed=False (Redis + Whoosh, no DB table). A verse with multiple
+    speakers gets one row per speaker.
+    """
+
+    speaker = models.ForeignKey(
+        Speaker,
+        on_delete=models.CASCADE,
+        related_name="verse_mappings",
+    )
+    version = models.CharField(max_length=16)
+    book = models.CharField(max_length=8)
+    chapter = models.IntegerField()
+    verse = models.IntegerField()
+
+    class Meta:  # pylint: disable=too-few-public-methods
+        """Django model metadata."""
+
+        app_label = "bible"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["speaker", "version", "book", "chapter", "verse"],
+                name="unique_speaker_per_verse",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["version", "book", "chapter", "verse"]),
+        ]
+
+    def __str__(self) -> str:
+        return (
+            f"{self.speaker_id} @ "
+            f"{self.version}:{self.book}:{self.chapter}:{self.verse}"
+        )

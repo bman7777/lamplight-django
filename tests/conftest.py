@@ -2,7 +2,8 @@
 
 import pytest
 
-from apps.bible.models import ConcordanceEntry, ConcordanceVerseMapping
+from apps.bible.models import (ConcordanceEntry, ConcordanceVerseMapping,
+                               Speaker, VerseSpeakerMapping)
 
 
 @pytest.fixture(scope="session")
@@ -85,6 +86,19 @@ def django_db_setup(
                     book="rev",
                     chapter=22,
                     verse=13,
+                ),
+            ]
+        )
+        # Seed a couple of speakers for the speaker-criterion tests.
+        jesus = Speaker.objects.create(name="Jesus")
+        Speaker.objects.create(name="God")
+        VerseSpeakerMapping.objects.bulk_create(
+            [
+                VerseSpeakerMapping(
+                    speaker=jesus, version="nasb95", book="mat", chapter=5, verse=3
+                ),
+                VerseSpeakerMapping(
+                    speaker=jesus, version="nasb95", book="jhn", chapter=3, verse=3
                 ),
             ]
         )
