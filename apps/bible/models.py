@@ -4,10 +4,12 @@ from django.db import models
 
 
 class Verse(models.Model):
-    """In-memory contract for haystack's SearchIndex.
+    """A single bible verse, sourced from apps/bible/data/bible.json.
 
-    Not backed by a database table (managed=False). Verse data is sourced from
-    apps/bible/data/bible.json and lives in Redis + the Whoosh index, not the ORM.
+    Also used as the in-memory contract for haystack's SearchIndex
+    (`bible_to_haystack` builds Verse instances and feeds them to Whoosh
+    directly). The DB table is populated by `verses_to_db` so the admin can
+    browse every verse and attach a SpeakerOverride.
     """
 
     pk_id = models.CharField(primary_key=True, max_length=64)
@@ -16,12 +18,22 @@ class Verse(models.Model):
     chapter = models.IntegerField()
     verse = models.IntegerField()
     text = models.TextField()
+    # Index in bible.json so the admin can list verses in canonical order
+    # rather than alphabetically by 3-letter book code.
+    sort_order = models.IntegerField(default=0)
 
     class Meta:  # pylint: disable=too-few-public-methods
         """Django model metadata."""
 
-        managed = False
         app_label = "bible"
+        ordering = ["sort_order"]
+        indexes = [
+            models.Index(fields=["version", "book", "chapter", "verse"]),
+            models.Index(fields=["sort_order"]),
+        ]
+
+    def __str__(self) -> str:
+        return self.pk_id
 
 
 class ConcordanceEntry(models.Model):
@@ -52,8 +64,6 @@ class ConcordanceVerseMapping(models.Model):
     """Maps a Strong's concordance entry to a verse it appears in.
 
     Sourced from the <H####>/<G####> markup in apps/bible/data/bible.csv.
-    The verse is denormalized into version/book/chapter/verse fields because
-    the Verse model is managed=False (Redis + Whoosh, no DB table).
     """
 
     concord = models.ForeignKey(
@@ -61,10 +71,11 @@ class ConcordanceVerseMapping(models.Model):
         on_delete=models.CASCADE,
         related_name="verse_mappings",
     )
-    version = models.CharField(max_length=16)
-    book = models.CharField(max_length=8)
-    chapter = models.IntegerField()
-    verse = models.IntegerField()
+    verse = models.ForeignKey(
+        Verse,
+        on_delete=models.CASCADE,
+        related_name="concord_mappings",
+    )
 
     class Meta:  # pylint: disable=too-few-public-methods
         """Django model metadata."""
@@ -72,16 +83,13 @@ class ConcordanceVerseMapping(models.Model):
         app_label = "bible"
         constraints = [
             models.UniqueConstraint(
-                fields=["concord", "version", "book", "chapter", "verse"],
+                fields=["concord", "verse"],
                 name="unique_concord_per_verse",
             ),
         ]
-        indexes = [
-            models.Index(fields=["version", "book", "chapter", "verse"]),
-        ]
 
     def __str__(self) -> str:
-        return f"{self.concord_id} @ {self.version}:{self.book}:{self.chapter}:{self.verse}"
+        return f"{self.concord_id} @ {self.verse_id}"
 
 
 class Author(models.Model):
@@ -158,10 +166,8 @@ class Speaker(models.Model):
 class VerseSpeakerMapping(models.Model):
     """Maps a Speaker to a verse they speak in.
 
-    Sourced from apps/bible/data/speaker.json. The verse is denormalized
-    into version/book/chapter/verse fields because the Verse model is
-    managed=False (Redis + Whoosh, no DB table). A verse with multiple
-    speakers gets one row per speaker.
+    Sourced from apps/bible/data/speaker.json. A verse with multiple speakers
+    gets one row per speaker.
     """
 
     speaker = models.ForeignKey(
@@ -169,10 +175,11 @@ class VerseSpeakerMapping(models.Model):
         on_delete=models.CASCADE,
         related_name="verse_mappings",
     )
-    version = models.CharField(max_length=16)
-    book = models.CharField(max_length=8)
-    chapter = models.IntegerField()
-    verse = models.IntegerField()
+    verse = models.ForeignKey(
+        Verse,
+        on_delete=models.CASCADE,
+        related_name="speaker_mappings",
+    )
 
     class Meta:  # pylint: disable=too-few-public-methods
         """Django model metadata."""
@@ -180,16 +187,40 @@ class VerseSpeakerMapping(models.Model):
         app_label = "bible"
         constraints = [
             models.UniqueConstraint(
-                fields=["speaker", "version", "book", "chapter", "verse"],
+                fields=["speaker", "verse"],
                 name="unique_speaker_per_verse",
             ),
         ]
-        indexes = [
-            models.Index(fields=["version", "book", "chapter", "verse"]),
-        ]
 
     def __str__(self) -> str:
-        return (
-            f"{self.speaker_id} @ "
-            f"{self.version}:{self.book}:{self.chapter}:{self.verse}"
-        )
+        return f"{self.speaker_id} @ {self.verse_id}"
+
+
+class SpeakerOverride(models.Model):
+    """Manual speaker assignment for a single verse, edited via Django admin.
+
+    The DB is the source of truth: `bible_extract_speakers` reads these rows
+    directly from the table when regenerating speaker.json. A row with an empty
+    `speakers` M2M is treated as "no override" (the extractor ignores it) and is
+    safe to leave around.
+
+    `speaker_overrides.json` + the `speaker_overrides_from_json` command exist
+    only to seed this table once from the legacy JSON; both are slated for
+    removal after every environment has been bootstrapped.
+    """
+
+    verse = models.OneToOneField(
+        Verse,
+        on_delete=models.CASCADE,
+        primary_key=True,
+        related_name="speaker_override",
+    )
+    speakers = models.ManyToManyField(Speaker, blank=True, related_name="overrides")
+
+    class Meta:  # pylint: disable=too-few-public-methods
+        """Django model metadata."""
+
+        app_label = "bible"
+
+    def __str__(self) -> str:
+        return f"override: {self.verse_id}"

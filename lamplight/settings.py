@@ -28,7 +28,7 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = os.getenv("DEBUG", "").strip().lower() in ("1", "true")
 
 if DEBUG:
     ALLOWED_HOSTS = ["localhost", "127.0.0.1"]

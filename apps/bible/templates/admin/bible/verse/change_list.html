@@ -1,0 +1,63 @@
+{% extends "admin/change_list.html" %}
+{% load i18n admin_urls %}
+
+{% comment %}
+Editable verse changelist: the stock template still renders the search box,
+filter sidebar and pagination; we only swap the result table for one speaker
+picker per row plus a single Save button. See bible.admin.VerseAdmin.
+{% endcomment %}
+
+{% block extrahead %}
+  {{ block.super }}
+  {# autocomplete.js uses gettext; load the catalog before the widget media. #}
+  <script src="{% url 'admin:jsi18n' %}"></script>
+  {{ speaker_media }}
+{% endblock %}
+
+{% block result_list %}
+  <p class="help" style="padding: 8px 0;">
+    {% translate "Each picker shows the verse's effective speaker(s): an override if one exists, otherwise the extracted speakers. Change any row and click Save — picking exactly the extracted speakers, or clearing the row, removes the override." %}
+  </p>
+  <div class="results">
+    <table id="result_list">
+      <thead>
+        <tr>
+          <th scope="col" class="column-reference">{% translate "Reference" %}</th>
+          <th scope="col" class="column-verse">{% translate "Verse" %}</th>
+          <th scope="col" class="column-source">{% translate "Source" %}</th>
+          <th scope="col" class="column-speakers">{% translate "Speaker(s)" %}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for verse, form, is_override in speaker_rows %}
+          <tr>
+            <th scope="row" style="white-space: nowrap;">
+              <a href="{% url 'admin:bible_verse_change' verse.pk %}">{{ verse.book }} {{ verse.chapter }}:{{ verse.verse }}</a>
+            </th>
+            <td>{{ verse.text }}</td>
+            <td style="white-space: nowrap;">
+              {% if is_override %}
+                <strong style="color: var(--object-tools-bg, #417690);">{% translate "override" %}</strong>
+              {% else %}
+                <span style="color: var(--body-quiet-color, #666);">{% translate "extracted" %}</span>
+              {% endif %}
+            </td>
+            <td>
+              {# Marks this row as present on the submitted form; see VerseAdmin._row_prefix. #}
+              <input type="hidden" name="spk-{{ verse.pk }}-present" value="1">
+              {{ form.speakers }}
+              {{ form.speakers.errors }}
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="4">{% translate "No verses match the current filters." %}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if speaker_rows %}
+    <div class="submit-row">
+      <input type="submit" name="_save_speakers" value="{% translate 'Save speaker overrides' %}" class="default">
+    </div>
+  {% endif %}
+{% endblock %}
