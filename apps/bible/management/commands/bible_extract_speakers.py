@@ -11,7 +11,6 @@ from apps.bible.utilities.speaker_extractor import SpeakerExtractor
 DATA_DIR = Path(apps.get_app_config("bible").path) / "data"
 DEFAULT_INPUT = DATA_DIR / "bible.json"
 DEFAULT_OUTPUT = DATA_DIR / "speaker.json"
-DEFAULT_OVERRIDES = DATA_DIR / "speaker_overrides.json"
 
 
 def _parse_chapter_spec(spec):
@@ -84,30 +83,13 @@ class Command(BaseCommand):
             action="store_true",
             help="Print every scoped verse (default: cap at 50 lines).",
         )
-        parser.add_argument(
-            "--overrides",
-            default=str(DEFAULT_OVERRIDES),
-            help=(
-                "Path to a manual-override JSON file. Same shape as "
-                "speaker.json: a list of {id, speaker} entries. Any id "
-                "present here replaces the extracted speaker for that verse. "
-                "Missing file is silently ignored."
-            ),
-        )
-        parser.add_argument(
-            "--no-overrides",
-            action="store_true",
-            help="Skip applying the manual-override file.",
-        )
 
     def handle(self, *args, **options):
         in_path = Path(options["input"])
         out_path = Path(options["output"])
         scope = _parse_chapter_spec(options["chapters"])
 
-        overrides = self._load_overrides(
-            Path(options["overrides"]), options["no_overrides"]
-        )
+        overrides = self._load_overrides()
         verses = self._load_verses(in_path)
 
         scoped_results, speaker_counts, overrides_applied = self._extract_scoped(
@@ -131,26 +113,19 @@ class Command(BaseCommand):
         )
 
     @staticmethod
-    def _load_overrides(overrides_path, skip_overrides):
-        if skip_overrides or not overrides_path.exists():
-            return {}
-        try:
-            with open(overrides_path, "r", encoding="utf-8") as f:
-                overrides_data = json.load(f)
-        except json.JSONDecodeError as exc:
-            raise CommandError(f"Invalid JSON in {overrides_path}: {exc}") from exc
-        if not isinstance(overrides_data, list):
-            raise CommandError(
-                f"Expected a JSON array at the top level of {overrides_path}."
-            )
-        overrides = {}
-        for entry in overrides_data:
-            if "id" not in entry or "speaker" not in entry:
-                raise CommandError(
-                    f"Override entry missing 'id' or 'speaker': {entry!r}"
-                )
-            overrides[entry["id"]] = entry["speaker"]
-        return overrides
+    def _load_overrides():
+        # Local import: this module is imported at Django startup, and we
+        # don't want it to fail if migrations haven't run yet.
+        from apps.bible.models import SpeakerOverride  # pylint: disable=import-outside-toplevel
+
+        qs = (
+            SpeakerOverride.objects.prefetch_related("speakers")
+            .filter(speakers__isnull=False)
+            .distinct()
+        )
+        return {
+            ov.verse_id: sorted(s.name for s in ov.speakers.all()) for ov in qs
+        }
 
     @staticmethod
     def _load_verses(in_path):

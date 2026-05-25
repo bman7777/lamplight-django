@@ -68,8 +68,8 @@ def _concord_hits(criterion):
     if not concord_id:
         return set()
     rows = ConcordanceVerseMapping.objects.filter(
-        concord_id=concord_id, version=VERSION
-    ).values_list("book", "chapter", "verse")
+        concord_id=concord_id, verse__version=VERSION
+    ).values_list("verse__book", "verse__chapter", "verse__verse")
     return {_normalize(VERSION, book, ch, v) for book, ch, v in rows}
 
 
@@ -96,8 +96,8 @@ def _author_hits(criterion):
 def _speaker_hits(criterion):
     rows = VerseSpeakerMapping.objects.filter(
         speaker__name__iexact=criterion.value.strip(),
-        version=VERSION,
-    ).values_list("book", "chapter", "verse")
+        verse__version=VERSION,
+    ).values_list("verse__book", "verse__chapter", "verse__verse")
     return {_normalize(VERSION, book, ch, v) for book, ch, v in rows}
 
 

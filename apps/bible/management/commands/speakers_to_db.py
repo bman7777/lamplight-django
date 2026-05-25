@@ -12,7 +12,7 @@ from django.apps import apps
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
-from apps.bible.models import Speaker, VerseSpeakerMapping
+from apps.bible.models import Speaker, Verse, VerseSpeakerMapping
 
 DATA_DIR = Path(apps.get_app_config("bible").path) / "data"
 DEFAULT_SPEAKER_PATH = DATA_DIR / "speaker.json"
@@ -48,9 +48,17 @@ class Command(BaseCommand):
             # Rebuild the mapping table from scratch — speaker.json is the
             # source of truth and changes are diff-y, not append-only.
             VerseSpeakerMapping.objects.all().delete()
-            mappings = self._build_mappings(data, name_to_id)
+            mappings, skipped = self._build_mappings(data, name_to_id)
             VerseSpeakerMapping.objects.bulk_create(mappings, batch_size=BATCH_SIZE)
 
+        if skipped:
+            self.stdout.write(
+                self.style.WARNING(
+                    f"Skipped {len(skipped)} entries with no matching Verse "
+                    "(run `verses_to_db` first): "
+                    f"{skipped[:5]!r}{'…' if len(skipped) > 5 else ''}"
+                )
+            )
         self.stdout.write(
             self.style.SUCCESS(
                 f"Speakers loaded: {len(name_to_id)} unique speakers, "
@@ -84,30 +92,32 @@ class Command(BaseCommand):
 
     @staticmethod
     def _build_mappings(data, name_to_id):
+        # Verse rows are populated by `verses_to_db` from bible.json; entries
+        # in speaker.json that reference a non-existent verse are skipped so
+        # the import doesn't fail on a single stray id. Returns (mappings,
+        # skipped_verse_ids).
+        known_verse_ids = set(
+            Verse.objects.filter(
+                pk_id__in=[e["id"] for e in data if "id" in e]
+            ).values_list("pk_id", flat=True)
+        )
         mappings = []
+        skipped = []
         for entry in data:
             speakers = entry.get("speaker") or []
             if not speakers:
                 continue
             vid = entry["id"]
-            try:
-                version, book, chapter, verse = vid.split(":")
-            except ValueError as exc:
-                raise CommandError(
-                    f"Malformed verse id {vid!r}; expected version:book:chapter:verse"
-                ) from exc
-            chapter = int(chapter)
-            verse = int(verse)
+            if vid not in known_verse_ids:
+                skipped.append(vid)
+                continue
             for sp in speakers:
                 if not sp:
                     continue
                 mappings.append(
                     VerseSpeakerMapping(
                         speaker_id=name_to_id[sp],
-                        version=version,
-                        book=book,
-                        chapter=chapter,
-                        verse=verse,
+                        verse_id=vid,
                     )
                 )
-        return mappings
+        return mappings, skipped

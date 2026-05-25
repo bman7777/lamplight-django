@@ -7,7 +7,7 @@ from django.apps import apps
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
-from apps.bible.models import ConcordanceEntry, ConcordanceVerseMapping
+from apps.bible.models import ConcordanceEntry, ConcordanceVerseMapping, Verse
 from apps.bible.utilities.concord import CONCORD_TAG_RE, normalize_concord_id
 
 DATA_DIR = Path(apps.get_app_config("bible").path) / "data"
@@ -39,13 +39,16 @@ class Command(BaseCommand):
         known_concord_ids = set(
             ConcordanceEntry.objects.values_list("concord_id", flat=True)
         )
+        known_verse_ids = set(
+            Verse.objects.filter(version=version).values_list("pk_id", flat=True)
+        )
 
-        mappings, row_count, skipped_invalid, skipped_unknown = self._parse_csv(
-            csv_file, version, known_concord_ids
+        mappings, row_count, skipped_invalid, skipped_unknown, skipped_no_verse = (
+            self._parse_csv(csv_file, version, known_concord_ids, known_verse_ids)
         )
 
         with transaction.atomic():
-            ConcordanceVerseMapping.objects.filter(version=version).delete()
+            ConcordanceVerseMapping.objects.filter(verse__version=version).delete()
             ConcordanceVerseMapping.objects.bulk_create(mappings, batch_size=BATCH_SIZE)
 
         self.stdout.write(
@@ -53,11 +56,12 @@ class Command(BaseCommand):
                 f"Verse mapping complete for version '{version}'. "
                 f"Inserted {len(mappings)} rows across {row_count} verses. "
                 f"Skipped {skipped_invalid} invalid tags, "
-                f"{skipped_unknown} unknown concord IDs."
+                f"{skipped_unknown} unknown concord IDs, "
+                f"{skipped_no_verse} rows with no matching Verse."
             )
         )
 
-    def _parse_csv(self, csv_file, version, known_concord_ids):
+    def _parse_csv(self, csv_file, version, known_concord_ids, known_verse_ids):
         # pylint: disable=duplicate-code
         try:
             file = open(csv_file, "r", newline="", encoding="utf-8")
@@ -73,30 +77,40 @@ class Command(BaseCommand):
         row_count = 0
         skipped_invalid = 0
         skipped_unknown = 0
+        skipped_no_verse = 0
 
         with file:
             reader = csv.reader(file, dialect="escaped")
             for row in reader:
                 if not row or len(row) < 4:
                     continue
-                row_invalid, row_unknown = self._collect_row_mappings(
-                    row, version, known_concord_ids, mappings
+                row_invalid, row_unknown, row_no_verse = self._collect_row_mappings(
+                    row, version, known_concord_ids, known_verse_ids, mappings
                 )
                 skipped_invalid += row_invalid
                 skipped_unknown += row_unknown
+                skipped_no_verse += row_no_verse
                 row_count += 1
                 if row_count % 1000 == 0:
                     self.stdout.write(f"Processed {row_count} verses...")
 
-        return mappings, row_count, skipped_invalid, skipped_unknown
+        return mappings, row_count, skipped_invalid, skipped_unknown, skipped_no_verse
 
     @staticmethod
-    def _collect_row_mappings(row, version, known_concord_ids, mappings):
+    def _collect_row_mappings(
+        row, version, known_concord_ids, known_verse_ids, mappings
+    ):
         book, text = row[0], row[3]
         try:
             chapter_i, verse_i = int(row[1]), int(row[2])
         except ValueError:
-            return 1, 0
+            return 1, 0, 0
+
+        verse_id = f"{version}:{book}:{chapter_i}:{verse_i}"
+        if verse_id not in known_verse_ids:
+            # If the verse isn't in the DB, skip every concord tag on this row
+            # (count once per tag for symmetry with the other skip counters).
+            return 0, 0, sum(1 for _ in CONCORD_TAG_RE.findall(text))
 
         skipped_invalid = 0
         skipped_unknown = 0
@@ -113,12 +127,6 @@ class Command(BaseCommand):
                 continue
             seen_in_verse.add(norm)
             mappings.append(
-                ConcordanceVerseMapping(
-                    concord_id=norm,
-                    version=version,
-                    book=book,
-                    chapter=chapter_i,
-                    verse=verse_i,
-                )
+                ConcordanceVerseMapping(concord_id=norm, verse_id=verse_id)
             )
-        return skipped_invalid, skipped_unknown
+        return skipped_invalid, skipped_unknown, 0
