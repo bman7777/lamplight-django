@@ -29,12 +29,12 @@ picker per row plus a single Save button. See bible.admin.VerseAdmin.
         </tr>
       </thead>
       <tbody>
-        {% for verse, form, is_override in speaker_rows %}
+        {% for verse, form, is_override, has_curly_quote in speaker_rows %}
           <tr>
             <th scope="row" style="white-space: nowrap;">
               <a href="{% url 'admin:bible_verse_change' verse.pk %}">{{ verse.book }} {{ verse.chapter }}:{{ verse.verse }}</a>
             </th>
-            <td>{{ verse.text }}</td>
+            <td{% if has_curly_quote %} style="background-color: #fff44f; color: #000;"{% endif %}>{{ verse.text }}</td>
             <td style="white-space: nowrap;">
               {% if is_override %}
                 <strong style="color: var(--object-tools-bg, #417690);">{% translate "override" %}</strong>

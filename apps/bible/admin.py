@@ -161,7 +161,7 @@ class VerseAdmin(admin.ModelAdmin):
         verses = list(change_list.result_list)
         saving = request.method == "POST" and "_save_speakers" in request.POST
 
-        rows = []  # (verse, form, is_override) in page order
+        rows = []  # (verse, form, is_override, has_curly_quote) in page order
         for verse in verses:
             effective_ids, is_override = self._effective_speaker_ids(verse)
             initial = {"speakers": effective_ids}
@@ -171,11 +171,13 @@ class VerseAdmin(admin.ModelAdmin):
                 if saving
                 else OverrideSpeakersForm(prefix=prefix, initial=initial)
             )
-            rows.append((verse, form, is_override))
+            # Curly double quotes (U+201C/U+201D), not straight ASCII ".
+            has_curly_quote = "“" in verse.text or "”" in verse.text
+            rows.append((verse, form, is_override, has_curly_quote))
 
-        if saving and all(form.is_valid() for _, form, _ in rows):
+        if saving and all(form.is_valid() for _, form, _, _ in rows):
             changed = 0
-            for verse, form, _ in rows:
+            for verse, form, _, _ in rows:
                 # Only touch rows that were actually on the submitted form. An
                 # empty multi-select submits no field at all, so the hidden
                 # "-present" marker is what tells an intentional clear apart
