@@ -23,6 +23,12 @@ server {
 		try_files $uri $uri/ /index.html;
 	}
 
+	location /static/ {
+		alias /var/www/lamplight-django/staticfiles/;
+		access_log off;
+		expires 30d;
+	}
+
 	location /lamplight/ {
 		alias /var/www/lamplight-react/dist/;
 		try_files $uri $uri/ /lamplight/index.html;
