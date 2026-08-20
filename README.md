@@ -54,6 +54,12 @@ server {
 Reload nginx with:
 `rc-service nginx reload`
 
+If the cert expires (should be running renew on a cron):
+```
+sudo certbot renew
+rc-service nginx reload
+```
+
 ## Granian
 
 ```
